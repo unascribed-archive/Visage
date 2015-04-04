@@ -37,6 +37,7 @@ dependencies {
     compile 'net.sf.jopt-simple:jopt-simple:4.5'
 	compile 'org.eclipse.jetty:jetty-server:9.3.0.M2'
 	compile 'com.typesafe:config:1.2.1'
+	compile 'com.rabbitmq:amqp-client:3.5.1'
 }
 
 // Read source files using UTF-8
