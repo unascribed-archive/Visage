@@ -1,0 +1,78 @@
+plugins {
+    id 'java'
+    id 'application'
+
+    id 'eclipse'
+    id 'idea'
+
+    id 'com.stehno.natives' version '0.2.1'
+    id 'com.github.hierynomus.license' version '0.11.0'
+}
+
+defaultTasks 'clean', 'licenseFormat', 'build'
+
+// Project information
+group = 'blue.lapis'
+version = '2.0-SNAPSHOT'
+
+sourceCompatibility = 1.7
+targetCompatibility = 1.7
+
+mainClassName = 'blue.lapis.tar.Tar'
+
+ext {
+    lwjgl = '2.9.3'
+}
+
+// Project repositories
+repositories {
+    mavenCentral()
+}
+
+// Project dependencies
+dependencies {
+    compile 'com.google.guava:guava:18.0'
+    compile "org.lwjgl.lwjgl:lwjgl:$lwjgl"
+    compile "org.lwjgl.lwjgl:lwjgl_util:$lwjgl"
+    compile 'net.sf.jopt-simple:jopt-simple:4.5'
+	compile 'org.eclipse.jetty:jetty-server:9.3.0.M2'
+}
+
+// Read source files using UTF-8
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+    options.deprecation = true
+}
+
+natives {
+    jars = configurations.compile.collectMany {
+        it.name.contains('natives') ? [it.name] : []
+    }
+}
+
+startScripts {
+    defaultJvmOpts =  [ '-Djava.library.path=../lib/natives/' ]
+    classpath = classpath.filter {
+        !it.name.contains('natives')
+    }
+}
+
+applicationDistribution.from(unpackNatives) {
+    from fileTree('build/natives').files
+    into 'lib/natives'
+}
+
+applicationDistribution.exclude {
+    it.name.contains('natives') && it.name.endsWith('.jar')
+}
+
+// License header formatting
+license {
+    header file('LICENSE')
+    sourceSets = project.sourceSets
+    ignoreFailures false
+    strictCheck true
+    mapping {
+        java = 'SLASHSTAR_STYLE'
+    }
+}
