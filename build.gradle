@@ -13,7 +13,7 @@ defaultTasks 'clean', 'licenseFormat', 'build'
 
 // Project information
 group = 'blue.lapis'
-version = '2.0-SNAPSHOT'
+version = '2.0.0-SNAPSHOT'
 
 sourceCompatibility = 1.7
 targetCompatibility = 1.7
