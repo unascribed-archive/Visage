@@ -1,10 +1,12 @@
 # Lapitar2
-A rewrite of Lapitar based on a master/slave system.
+A rewrite of Lapitar based on a master/slave system. **Not finished.**
 
 ## Compiling
-`./gradlew`. Only Linux is confirmed to work. You can try your luck on Windows
+`./gradlew`. Only Linux is confirmed to work. You can try your luck on Windows.
 
 ## Usage
+
+**Everything in this section is just a basic spec for Aesen's reference.** It is subject to drastic change.
 
 ### Prerequisites
 
