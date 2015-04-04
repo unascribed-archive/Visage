@@ -1,6 +1,5 @@
 plugins {
     id 'java'
-    id 'application'
 
     id 'eclipse'
     id 'idea'
@@ -18,8 +17,6 @@ version = '2.0.0-SNAPSHOT'
 sourceCompatibility = 1.7
 targetCompatibility = 1.7
 
-mainClassName = 'blue.lapis.tar.Tar'
-
 ext {
     lwjgl = '2.9.3'
 }
@@ -27,6 +24,10 @@ ext {
 // Project repositories
 repositories {
     mavenCentral()
+	maven {
+		name 'spacehq'
+		url 'http://repo.spacehq.org/content/repositories/release/'
+	}
 }
 
 // Project dependencies
@@ -38,6 +39,7 @@ dependencies {
 	compile 'org.eclipse.jetty:jetty-server:9.3.0.M2'
 	compile 'com.typesafe:config:1.2.1'
 	compile 'com.rabbitmq:amqp-client:3.5.1'
+	compile 'com.google.code.gson:gson:2.2.4'
 }
 
 // Read source files using UTF-8
@@ -52,25 +54,10 @@ natives {
     }
 }
 
-startScripts {
-    defaultJvmOpts =  [ '-Djava.library.path=../lib/natives/' ]
-    classpath = classpath.filter {
-        !it.name.contains('natives')
-    }
-}
-
-applicationDistribution.from(unpackNatives) {
-    from fileTree('build/natives').files
-    into 'lib/natives'
-}
-
-applicationDistribution.exclude {
-    it.name.contains('natives') && it.name.endsWith('.jar')
-}
-
 // License header formatting
 license {
     header file('LICENSE')
+	include 'src/main/java/blue/lapis/**/*'
     sourceSets = project.sourceSets
     ignoreFailures false
     strictCheck true

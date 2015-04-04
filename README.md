@@ -31,7 +31,7 @@ Run `java -jar Lapitar2.jar --master`. It will pick up the `master.conf` in the 
 
 ### Slave
 Lapitar systems can optionally have a (theoretically) infinite number of slaves. A good example of a slave is a computer
-that has a GPU, but is on an unreliable internet connection. Slaves can be run with or without hardware acceleration.
+that has a GPU, but is on an unreliable Internet connection. Slaves can be run with or without hardware acceleration.
 
 #### Configuration
 Edit the `conf/slave.conf` file. It is self-documenting.
