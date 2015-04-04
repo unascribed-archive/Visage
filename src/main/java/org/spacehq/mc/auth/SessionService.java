@@ -143,7 +143,7 @@ public class SessionService {
 			return profile;
 
 		try {
-			URL url = URLUtils.constantURL("https://sessionserver.mojang.com/session/minecraft/profile/" + UUIDSerializer.fromUUID(profile.getId()));
+			URL url = URLUtils.constantURL("https://sessionserver.mojang.com/session/minecraft/profile/" + UUIDSerializer.fromUUID(profile.getId()) + "?unsigned=false");
 			MinecraftProfilePropertiesResponse response = URLUtils.makeRequest(url, null, MinecraftProfilePropertiesResponse.class);
 			if(response == null)
 				throw new ProfileNotFoundException("Couldn't fetch profile properties for " + profile + " as the profile does not exist.");
