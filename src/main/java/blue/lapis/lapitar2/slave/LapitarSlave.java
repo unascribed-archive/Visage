@@ -6,25 +6,25 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.net.URL;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Level;
+import java.util.zip.InflaterInputStream;
 
 import javax.imageio.ImageIO;
 
+import org.apache.commons.io.Charsets;
 import org.lwjgl.BufferUtils;
-import org.lwjgl.LWJGLException;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.spacehq.mc.auth.GameProfile;
 import org.spacehq.mc.auth.ProfileTexture;
 import org.spacehq.mc.auth.ProfileTextureType;
 import org.spacehq.mc.auth.SessionService;
-import org.spacehq.mc.auth.exception.PropertyException;
 import org.spacehq.mc.auth.properties.Property;
 import org.spacehq.mc.auth.util.Base64;
 import org.spacehq.mc.auth.util.URLUtils;
@@ -47,15 +47,22 @@ import com.typesafe.config.Config;
 
 public class LapitarSlave extends Thread {
 	private Config config;
-	private boolean run;
+	private boolean run = true;
 	private Renderer[] renderers;
 	private SessionService session = new SessionService();
 	private Gson gson = new Gson();
 	private BufferedImage steve, alex;
 	private ByteArrayOutputStream png = new ByteArrayOutputStream();
+	private String name;
+	private Channel channel;
 	public LapitarSlave(Config config) {
 		super("Slave thread");
 		this.config = config;
+		try {
+			name = config.getString("name");
+		} catch (Exception e) {
+			name = "unnamed slave";
+		}
 		RenderMode[] modes = RenderMode.values();
 		renderers = new Renderer[modes.length];
 		for (int i = 0; i < modes.length; i++) {
@@ -68,63 +75,79 @@ public class LapitarSlave extends Thread {
 		System.setProperty("org.lwjgl.opengl.Display.allowSoftwareOpenGL", Boolean.toString(config.getBoolean("allowSoftware")));
 		System.setProperty("org.lwjgl.opengl.Display.noinput", "true");
 		try {
+			Lapitar.log.info("Setting up LWJGL");
+			Class.forName("org.lwjgl.opengl.Display");
+			Lapitar.log.info("Downloading default skins");
 			steve = ImageIO.read(URLUtils.constantURL("https://minecraft.net/images/steve.png"));
 			alex = ImageIO.read(URLUtils.constantURL("https://minecraft.net/images/alex.png"));
+			Lapitar.log.info("Connecting to RabbitMQ at "+config.getString("rabbitmq.host")+":"+config.getInt("rabbitmq.port"));
 			ConnectionFactory factory = new ConnectionFactory();
 			factory.setHost(config.getString("rabbitmq.host"));
 			factory.setPort(config.getInt("rabbitmq.port"));
 			String queue = config.getString("rabbitmq.queue");
 			
 			Connection conn = factory.newConnection();
-			Channel channel = conn.createChannel();
+			channel = conn.createChannel();
+			Lapitar.log.info("Setting up queue '"+queue+"'");
 			channel.queueDeclare(queue, false, false, true, null);
 			channel.basicQos(1);
 			
 			QueueingConsumer consumer = new QueueingConsumer(channel);
 			channel.basicConsume(queue, consumer);
-			while (run) {
-				try {
-					Delivery delivery = consumer.nextDelivery();
-					BasicProperties props = delivery.getProperties();
-					BasicProperties replyProps = new BasicProperties.Builder().correlationId(props.getCorrelationId()).build();
-					DataInputStream data = new DataInputStream(new ByteArrayInputStream(delivery.getBody()));
+			Lapitar.log.info("Listening for jobs");
+			try {
+				while (run) {
 					try {
-						RenderMode mode = RenderMode.values()[data.readUnsignedByte()];
-						int width = data.readUnsignedShort();
-						int height = data.readUnsignedShort();
-						int supersampling = data.readUnsignedByte();
-						GameProfile profile = readGameProfile(data);
-						byte[] pngBys = draw(mode, width, height, supersampling, profile);
-						channel.basicPublish("", props.getReplyTo(), replyProps, pngBys);
-						channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
-					} catch (Exception e) {
-						channel.basicNack(delivery.getEnvelope().getDeliveryTag(), false, false);
+						Delivery delivery = consumer.nextDelivery();
+						try {
+							processDelivery(delivery);
+						} catch (Exception e) {
+							Lapitar.log.log(Level.SEVERE, "An unexpected error occurred while rendering", e);
+							channel.basicNack(delivery.getEnvelope().getDeliveryTag(), false, false);
+						}
+					} catch (InterruptedException e) {
+						run = false;
+						break;
 					}
-				} catch (InterruptedException e) {
-					run = false;
-					break;
 				}
-			}
-			for (Renderer r : renderers) {
-				if (r != null) {
-					r.destroy();
+				for (Renderer r : renderers) {
+					if (r != null) {
+						r.destroy();
+					}
 				}
+			} catch (Exception e) {
+				Lapitar.log.log(Level.SEVERE, "A fatal error has occurred in the slave run loop. Lapitar cannot continue.", e);
 			}
 		} catch (Exception e) {
-			Lapitar.log.log(Level.SEVERE, "", e);
+			Lapitar.log.log(Level.SEVERE, "A fatal error has occurred while setting up the slave. Lapitar cannot continue.", e);
 		}
 	}
 
-	public byte[] draw(RenderMode mode, int width, int height,
-			int supersampling, GameProfile profile) throws PropertyException,
-			UnsupportedEncodingException, IOException, LWJGLException,
-			InterruptedException {
+	private void processDelivery(Delivery delivery) throws Exception {
+		BasicProperties props = delivery.getProperties();
+		BasicProperties replyProps = new BasicProperties.Builder().correlationId(props.getCorrelationId()).build();
+		DataInputStream data = new DataInputStream(new InflaterInputStream(new ByteArrayInputStream(delivery.getBody())));
+		RenderMode mode = RenderMode.values()[data.readUnsignedByte()];
+		int width = data.readUnsignedShort();
+		int height = data.readUnsignedShort();
+		int supersampling = data.readUnsignedByte();
+		GameProfile profile = readGameProfile(data);
+		Lapitar.log.info("Rendering a "+width+"x"+height+" "+mode.name().toLowerCase()+" ("+supersampling+"x supersampling) for "+profile.getName());
+		byte[] pngBys = draw(mode, width, height, supersampling, profile);
+		ByteArrayOutputStream result = new ByteArrayOutputStream();
+		new DataOutputStream(result).writeUTF(name);
+		result.write(pngBys);
+		channel.basicPublish("", props.getReplyTo(), replyProps, result.toByteArray());
+		channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
+	}
+
+	public byte[] draw(RenderMode mode, int width, int height, int supersampling, GameProfile profile) throws Exception {
 		png.reset();
 		Map<ProfileTextureType, ProfileTexture> tex = session.getTextures(profile, false);
 		boolean slim = isSlim(profile);
 		BufferedImage skin, cape, out;
 		if (tex.containsKey(ProfileTextureType.SKIN)) {
-			skin = ImageIO.read(URLUtils.constantURL(tex.get(ProfileTextureType.SKIN).getUrl()));
+			skin = ImageIO.read(new URL(tex.get(ProfileTextureType.SKIN).getUrl()));
 		} else {
 			skin = slim ? alex : steve;
 		}
@@ -152,7 +175,7 @@ public class LapitarSlave extends Thread {
 				try {
 					renderer.render(width, height);
 					GL11.glReadBuffer(GL11.GL_FRONT);
-					ByteBuffer buf = BufferUtils.createByteBuffer(width * height * 4).order(ByteOrder.LITTLE_ENDIAN);
+					ByteBuffer buf = BufferUtils.createByteBuffer(width * height * 4);
 					GL11.glReadPixels(0, 0, width, height, GL12.GL_BGRA, GL11.GL_UNSIGNED_BYTE, buf);
 					BufferedImage img  = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
 					int[] pixels = new int[width*height];
@@ -169,8 +192,8 @@ public class LapitarSlave extends Thread {
 		return png.toByteArray();
 	}
 
-	private boolean isSlim(GameProfile profile) throws UnsupportedEncodingException, IOException {
-		String texJson = new String(Base64.decode(profile.getProperties().get("textures").getValue().getBytes("UTF-8")));
+	private boolean isSlim(GameProfile profile) throws IOException {
+		String texJson = new String(Base64.decode(profile.getProperties().get("textures").getValue().getBytes(Charsets.UTF_8)));
 		JsonObject obj = gson.fromJson(texJson, JsonObject.class);
 		JsonObject tex = obj.getAsJsonObject("textures");
 		if (tex.has("SKIN")) {

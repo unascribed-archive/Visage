@@ -40,6 +40,7 @@ dependencies {
 	compile 'com.typesafe:config:1.2.1'
 	compile 'com.rabbitmq:amqp-client:3.5.1'
 	compile 'com.google.code.gson:gson:2.2.4'
+	compile 'commons-io:commons-io:2.4'
 }
 
 // Read source files using UTF-8
