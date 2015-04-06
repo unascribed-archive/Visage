@@ -13,6 +13,7 @@ defaultTasks 'clean', 'licenseFormat', 'build'
 // Project information
 group = 'blue.lapis'
 version = '2.0.0-SNAPSHOT'
+archivesBaseName = 'Lapitar'
 
 sourceCompatibility = 1.7
 targetCompatibility = 1.7
@@ -40,7 +41,8 @@ dependencies {
 	compile 'com.typesafe:config:1.2.1'
 	compile 'com.rabbitmq:amqp-client:3.5.1'
 	compile 'com.google.code.gson:gson:2.2.4'
-	compile 'commons-io:commons-io:2.4'
+	compile 'org.fusesource.jansi:jansi:1.11'
+	compile 'org.spacehq:mcauthlib:1.0'
 }
 
 // Read source files using UTF-8
