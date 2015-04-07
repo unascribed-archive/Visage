@@ -1,6 +1,7 @@
 package blue.lapis.lapitar2.slave.render;
 
 import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.opengl.ARBVertexBufferObject.*;
 import org.lwjgl.opengl.Util;
 
 import blue.lapis.lapitar2.Lapitar;
@@ -62,17 +63,18 @@ public class Cube {
 			glScalef(scaleX, scaleY, scaleZ);
 			Util.checkGLError();
 			
-			/*Lapitar.log.finest("Setting VBO");
+			glColor3f((float)Math.random(), (float)Math.random(), (float)Math.random());
+			
+			Lapitar.log.finest("Setting VBO");
 		    glEnableClientState(GL_VERTEX_ARRAY);
 		    glBindBufferARB(GL_ARRAY_BUFFER_ARB, renderer.vbo);
 		    glVertexPointer(3, GL_FLOAT, 0, 0);
 		    Util.checkGLError();
 		    
 		    Lapitar.log.finest("Rendering");
-			glDrawArrays(GL_QUADS, 0, Renderer.vertices.length);
-			Util.checkGLError();*/
-			glFrontFace(GL_CW);
-			glBegin(GL_QUADS);
+			glDrawArrays(GL_QUADS, 0, Renderer.vertices.length/3);
+			Util.checkGLError();
+			/*glBegin(GL_QUADS);
 			for (int i = 0; i < Renderer.vertices.length/3; i++) {
 				int idx = i*3;
 				float x = Renderer.vertices[idx];
@@ -82,7 +84,7 @@ public class Cube {
 				glVertex3f(x, y, z);
 				glColor3f((float)Math.random(), (float)Math.random(), (float)Math.random());
 			}
-			glEnd();
+			glEnd();*/
 			Util.checkGLError();
 		glPopMatrix();
 	}

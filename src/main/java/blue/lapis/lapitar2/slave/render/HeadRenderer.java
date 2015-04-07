@@ -19,10 +19,10 @@ public class HeadRenderer extends Renderer {
 		addCube(helm);*/
 		head = new Cube();
 		head.x = 0;
-		head.y = 0.3f;
+		head.y = -0.3f;
 		head.z = -5.05f;
-		head.rotX = ((float)Math.random()*90f)-45f;
-		head.rotY = ((float)Math.random()*90f)-45f;
+		head.rotX = -25;
+		head.rotY = 45;
 		addCube(head);
 	}
 }

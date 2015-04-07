@@ -96,6 +96,7 @@ public abstract class Renderer {
 		
 		FloatBuffer vertexBuffer = BufferUtils.createFloatBuffer(vertices.length);
 		vertexBuffer.put(vertices);
+		vertexBuffer.flip();
 		glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo);
 		glBufferDataARB(GL_ARRAY_BUFFER_ARB, vertexBuffer, GL_STATIC_DRAW_ARB);
 		Util.checkGLError();
