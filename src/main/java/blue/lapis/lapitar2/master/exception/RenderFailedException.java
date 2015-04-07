@@ -1,6 +1,7 @@
-package blue.lapis.lapitar2.master;
+package blue.lapis.lapitar2.master.exception;
 
 public class RenderFailedException extends Exception {
+	private static final long serialVersionUID = 6835187728991896166L;
 
 	public RenderFailedException() {
 		super();

@@ -1,4 +1,4 @@
-package blue.lapis.lapitar2;
+package blue.lapis.lapitar2.util;
 
 import java.awt.Graphics2D;
 import java.awt.Image;

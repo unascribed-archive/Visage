@@ -1,4 +1,4 @@
-package blue.lapis.lapitar2.master;
+package blue.lapis.lapitar2.master.glue;
 
 import java.io.IOException;
 
