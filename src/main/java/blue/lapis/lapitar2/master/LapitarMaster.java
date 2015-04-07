@@ -29,8 +29,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -52,15 +54,14 @@ import blue.lapis.lapitar2.master.glue.HeaderHandler;
 import blue.lapis.lapitar2.master.glue.LogShim;
 import blue.lapis.lapitar2.slave.LapitarSlave;
 
+import com.google.common.collect.Maps;
 import com.google.common.io.ByteStreams;
 import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
-import com.rabbitmq.client.ConsumerCancelledException;
 import com.rabbitmq.client.QueueingConsumer;
 import com.rabbitmq.client.QueueingConsumer.Delivery;
-import com.rabbitmq.client.ShutdownSignalException;
 import com.typesafe.config.Config;
 
 public class LapitarMaster extends Thread {
@@ -106,6 +107,10 @@ public class LapitarMaster extends Thread {
 			ConnectionFactory factory = new ConnectionFactory();
 			factory.setHost(config.getString("rabbitmq.host"));
 			factory.setPort(config.getInt("rabbitmq.port"));
+			if (config.hasPath("rabbitmq.user")) {
+				factory.setUsername(config.getString("rabbitmq.user"));
+				factory.setPassword(config.getString("rabbitmq.password"));
+			}
 			String queue = config.getString("rabbitmq.queue");
 			
 			conn = factory.newConnection();
@@ -126,13 +131,45 @@ public class LapitarMaster extends Thread {
 			}
 			Lapitar.log.info("Starting Jetty");
 			server.start();
+			Lapitar.log.info("Listening for finished jobs");
+			try {
+				while (true) {
+					Delivery delivery = consumer.nextDelivery();
+					Lapitar.log.finer("Got delivery");
+					try {
+						String corrId = delivery.getProperties().getCorrelationId();
+						if (queuedJobs.containsKey(corrId)) {
+							Lapitar.log.finer("Valid");
+							responses.put(corrId, delivery.getBody());
+							Runnable run = queuedJobs.get(corrId);
+							queuedJobs.remove(corrId);
+							Lapitar.log.finer("Removed from queue");
+							run.run();
+							Lapitar.log.finer("Ran runnable");
+							channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
+							Lapitar.log.finer("Ack'd");
+						} else {
+							Lapitar.log.warning("Unknown correlation ID?");
+							channel.basicNack(delivery.getEnvelope().getDeliveryTag(), false, false);
+						}
+					} catch (Exception e) {
+						Lapitar.log.log(Level.WARNING, "An unexpected error occured while attempting to process a response.", e);
+					}
+				}
+			} catch (Exception e) {
+				Lapitar.log.log(Level.SEVERE, "An unexpected error occured in the master run loop.", e);
+				System.exit(2);
+			}
 		} catch (Exception e) {
-			Lapitar.log.log(Level.SEVERE, "A fatal error has occured while initializing the master. Lapitar cannot continue.", e);
+			Lapitar.log.log(Level.SEVERE, "An unexpected error occured while initializing the master.", e);
+			System.exit(1);
 		}
 	}
 	private final ByteArrayOutputStream baos = new ByteArrayOutputStream();
 	private String replyQueue;
 	private QueueingConsumer consumer;
+	private Map<String, Runnable> queuedJobs = Maps.newHashMap();
+	private Map<String, byte[]> responses = Maps.newHashMap();
 	public RenderResponse renderRpc(RenderMode mode, int width, int height, int supersampling, GameProfile profile) throws RenderFailedException, NoSlavesAvailableException {
 		baos.reset();
 		try {
@@ -150,34 +187,51 @@ public class LapitarMaster extends Thread {
 			defos.finish();
 			channel.basicPublish("", config.getString("rabbitmq.queue"), props, baos.toByteArray());
 			Lapitar.log.finer("Requested a "+width+"x"+height+" "+mode.name().toLowerCase()+" render ("+supersampling+"x supersampling) for "+profile.getName());
-			while (true) {
-				try {
-					Delivery delivery = consumer.nextDelivery(config.getDuration("render.timeout", TimeUnit.MILLISECONDS));
-					if (delivery == null)
-						throw new RenderFailedException("Request timed out");
-					if (corrId.equals(delivery.getProperties().getCorrelationId())) {
-						Lapitar.log.info("Got response");
-						response = delivery.getBody();
-						channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
-						break;
-					} else {
-						Lapitar.log.warning("Incorrect correlation ID?");
-						channel.basicNack(delivery.getEnvelope().getDeliveryTag(), false, true);
+			final Object waiter = new Object();
+			queuedJobs.put(corrId, new Runnable() {
+				@Override
+				public void run() {
+					Lapitar.log.finer("Got response");
+					synchronized (waiter) {
+						waiter.notify();
 					}
-				} catch (ShutdownSignalException e) {
-					throw new RenderFailedException("RabbitMQ shut down", e);
-				} catch (ConsumerCancelledException e) {
-					throw new RenderFailedException("Consumer cancelled", e);
-				} catch (InterruptedException e) {
-					throw new RenderFailedException("Request interrupted", e);
+				}
+			});
+			long start = System.currentTimeMillis();
+			long timeout = config.getDuration("render.timeout", TimeUnit.MILLISECONDS);
+			synchronized (waiter) {
+				while (queuedJobs.containsKey(corrId) && (System.currentTimeMillis()-start) < timeout) {
+					Lapitar.log.finer("Waiting...");
+					waiter.wait(timeout);
 				}
 			}
-			RenderResponse resp = new RenderResponse();
+			if (queuedJobs.containsKey(corrId)) {
+				Lapitar.log.finer("Queue still contains this request, assuming timeout");
+				queuedJobs.remove(corrId);
+				throw new RenderFailedException("Request timed out");
+			}
+			response = responses.get(corrId);
+			responses.remove(corrId);
+			if (response == null)
+				throw new RenderFailedException("Response was null");
 			ByteArrayInputStream bais = new ByteArrayInputStream(response);
-			resp.slave = new DataInputStream(bais).readUTF();
-			resp.png = ByteStreams.toByteArray(bais);
-			Lapitar.log.finer("Receieved render from "+resp.slave);
-			return resp;
+			String slave = new DataInputStream(bais).readUTF();
+			int type = bais.read();
+			byte[] payload = ByteStreams.toByteArray(bais);
+			if (type == 0) {
+				Lapitar.log.finer("Got type 0, success");
+				RenderResponse resp = new RenderResponse();
+				resp.slave = slave;
+				resp.png = payload;
+				Lapitar.log.finer("Receieved render from "+resp.slave);
+				return resp;
+			} else if (type == 1) {
+				Lapitar.log.finer("Got type 1, failure");
+				ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(payload));
+				Throwable t = (Throwable)ois.readObject();
+				throw new RenderFailedException("Slave reported error", t);
+			} else
+				throw new RenderFailedException("Malformed response from '"+slave+"' - unknown response id "+type);
 		} catch (Exception e) {
 			if (e instanceof RenderFailedException)
 				throw (RenderFailedException) e;

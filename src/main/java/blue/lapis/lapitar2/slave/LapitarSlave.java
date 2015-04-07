@@ -8,6 +8,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -38,6 +39,7 @@ import blue.lapis.lapitar2.slave.render.Renderer;
 import blue.lapis.lapitar2.util.Images;
 import blue.lapis.lapitar2.util.UUIDs;
 
+import com.google.common.collect.Maps;
 import com.google.common.io.ByteStreams;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -51,7 +53,6 @@ import com.typesafe.config.Config;
 
 public class LapitarSlave extends Thread {
 	private Config config;
-	private boolean run = true;
 	private Renderer[] renderers;
 	private SessionService session = new SessionService();
 	private Gson gson = new Gson();
@@ -114,29 +115,47 @@ public class LapitarSlave extends Thread {
 			ConnectionFactory factory = new ConnectionFactory();
 			factory.setHost(config.getString("rabbitmq.host"));
 			factory.setPort(config.getInt("rabbitmq.port"));
+			if (config.hasPath("rabbitmq.user")) {
+				Lapitar.log.finer("Using authentication");
+				factory.setUsername(config.getString("rabbitmq.user"));
+				factory.setPassword(config.getString("rabbitmq.password"));
+			}
 			String queue = config.getString("rabbitmq.queue");
 			
 			Connection conn = factory.newConnection();
 			channel = conn.createChannel();
 			Lapitar.log.finer("Setting up queue '"+queue+"'");
 			channel.queueDeclare(queue, false, false, true, null);
-			channel.basicQos(1);
+			int qos = config.getInt("qos");
+			if (qos != -1) {
+				channel.basicQos(qos);
+			}
 			
 			QueueingConsumer consumer = new QueueingConsumer(channel);
-			channel.basicConsume(queue, consumer);
+			Map<String, Object> args = Maps.newHashMap();
+			args.put("x-priority", config.getInt("weight"));
+			channel.basicConsume(queue, false, args, consumer);
 			Lapitar.log.info("Listening for jobs");
 			try {
-				while (run) {
+				while (true) {
 					try {
 						Delivery delivery = consumer.nextDelivery();
 						try {
 							processDelivery(delivery);
+						} catch (InterruptedException e) {
+							throw e;
 						} catch (Exception e) {
 							Lapitar.log.log(Level.SEVERE, "An unexpected error occurred while rendering", e);
-							channel.basicNack(delivery.getEnvelope().getDeliveryTag(), false, false);
+							BasicProperties props = delivery.getProperties();
+							BasicProperties replyProps = new BasicProperties.Builder().correlationId(props.getCorrelationId()).build();
+							ByteArrayOutputStream ex = new ByteArrayOutputStream();
+							ObjectOutputStream oos = new ObjectOutputStream(ex);
+							oos.writeObject(e);
+							oos.flush();
+							channel.basicPublish("", props.getReplyTo(), replyProps, buildResponse(1, ex.toByteArray()));
+							channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
 						}
 					} catch (InterruptedException e) {
-						run = false;
 						break;
 					}
 				}
@@ -146,10 +165,10 @@ public class LapitarSlave extends Thread {
 					}
 				}
 			} catch (Exception e) {
-				Lapitar.log.log(Level.SEVERE, "A fatal error has occurred in the slave run loop. The slave cannot continue.", e);
+				Lapitar.log.log(Level.SEVERE, "A fatal error has occurred in the slave run loop.", e);
 			}
 		} catch (Exception e) {
-			Lapitar.log.log(Level.SEVERE, "A fatal error has occurred while setting up the slave. The slave cannot continue.", e);
+			Lapitar.log.log(Level.SEVERE, "A fatal error has occurred while setting up the slave.", e);
 		}
 	}
 
@@ -164,23 +183,39 @@ public class LapitarSlave extends Thread {
 		GameProfile profile = readGameProfile(data);
 		Lapitar.log.finer("Rendering a "+width+"x"+height+" "+mode.name().toLowerCase()+" ("+supersampling+"x supersampling) for "+profile.getName());
 		byte[] pngBys = draw(mode, width, height, supersampling, profile);
+		Lapitar.log.finest("Got png bytes");
+		channel.basicPublish("", props.getReplyTo(), replyProps, buildResponse(0, pngBys));
+		Lapitar.log.finest("Published response");
+		channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
+		Lapitar.log.finest("Ack'd message");
+	}
+
+	private byte[] buildResponse(int type, byte[] payload) throws IOException {
+		Lapitar.log.finest("Building response of type "+type);
 		ByteArrayOutputStream result = new ByteArrayOutputStream();
 		new DataOutputStream(result).writeUTF(name);
-		result.write(pngBys);
-		channel.basicPublish("", props.getReplyTo(), replyProps, result.toByteArray());
-		channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
+		result.write(type);
+		result.write(payload);
+		byte[] resp = result.toByteArray();
+		Lapitar.log.finest("Built - "+resp.length+" bytes long");
+		return resp;
 	}
 
 	public byte[] draw(RenderMode mode, int width, int height, int supersampling, GameProfile profile) throws Exception {
 		png.reset();
+		Lapitar.log.finest("Reset png");
 		Map<ProfileTextureType, ProfileTexture> tex = session.getTextures(profile, false);
 		boolean slim = isSlim(profile);
-		BufferedImage skin, cape, out;
+		BufferedImage skin;
+		//BufferedImage cape;
+		BufferedImage out;
 		if (tex.containsKey(ProfileTextureType.SKIN)) {
 			skin = ImageIO.read(new URL(tex.get(ProfileTextureType.SKIN).getUrl()));
 		} else {
 			skin = slim ? alex : steve;
 		}
+		Lapitar.log.finest("Got skin");
+		Lapitar.log.finest(mode.name());
 		switch (mode) {
 			case FACE:
 				width /= supersampling;
@@ -200,10 +235,13 @@ public class LapitarSlave extends Thread {
 			default: {
 				Renderer renderer = renderers[mode.ordinal()];
 				if (!renderer.isInitialized()) {
+					Lapitar.log.finest("Initialized renderer");
 					renderer.init(supersampling);
 				}
 				try {
+					Lapitar.log.finest("Rendering");
 					renderer.render(width, height);
+					Lapitar.log.finest("Rendered - reading pixels");
 					GL11.glReadBuffer(GL11.GL_FRONT);
 					ByteBuffer buf = BufferUtils.createByteBuffer(width * height * 4);
 					GL11.glReadPixels(0, 0, width, height, GL12.GL_BGRA, GL11.GL_UNSIGNED_BYTE, buf);
@@ -211,14 +249,18 @@ public class LapitarSlave extends Thread {
 					int[] pixels = new int[width*height];
 					buf.asIntBuffer().get(pixels);
 					img.setRGB(0, 0, width, height, pixels, 0, width);
+					Lapitar.log.finest("Read pixels");
 					out = Images.toBuffered(img.getScaledInstance(width/supersampling, height/supersampling, Image.SCALE_AREA_AVERAGING));
+					Lapitar.log.finest("Rescaled image");
 				} finally {
 					renderer.finish();
+					Lapitar.log.finest("Finished renderer");
 				}
 				break;
 			}
 		}
 		ImageIO.write(out, "PNG", png);
+		Lapitar.log.finest("Wrote png");
 		return png.toByteArray();
 	}
 

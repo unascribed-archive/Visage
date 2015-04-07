@@ -30,8 +30,13 @@ public class Lapitar {
 		con.setFormatter(logFormat);
 		log.setUseParentHandlers(false);
 		log.addHandler(con);
-		log.setLevel(Level.ALL);
-		con.setLevel(Level.ALL);
+		if (Boolean.parseBoolean(System.getProperty("blue.lapis.lapitar2.debug"))) {
+			log.setLevel(Level.ALL);
+			con.setLevel(Level.ALL);
+		} else {
+			log.setLevel(Level.FINE);
+			con.setLevel(Level.FINE);
+		}
 		OptionParser parser = new OptionParser();
 		parser.acceptsAll(Arrays.asList("master", "m"), "Start Lapitar as a master.");
 		parser.acceptsAll(Arrays.asList("slave", "s"), "Start Lapitar as a slave.");

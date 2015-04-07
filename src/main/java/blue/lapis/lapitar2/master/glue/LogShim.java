@@ -73,19 +73,19 @@ public class LogShim extends AbstractLogger {
 
 	@Override
 	public void debug(String msg, long value) {
-		log.fine(String.format(msg, value));
+		log.finer(String.format(msg, value));
 	}
 
 	@Override
 	public void debug(Throwable thrown) {
-		LogRecord rec = new LogRecord(Level.FINE, "");
+		LogRecord rec = new LogRecord(Level.FINER, "");
 		rec.setThrown(thrown);
 		log.log(rec);
 	}
 
 	@Override
 	public void debug(String msg, Throwable thrown) {
-		LogRecord rec = new LogRecord(Level.FINE, msg);
+		LogRecord rec = new LogRecord(Level.FINER, msg);
 		rec.setThrown(thrown);
 		log.log(rec);
 	}

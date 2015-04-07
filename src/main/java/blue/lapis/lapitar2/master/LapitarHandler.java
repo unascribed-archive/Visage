@@ -27,6 +27,11 @@ public class LapitarHandler extends AbstractHandler {
 		List<String> debug = master.config.getStringList("debug");
 		slaveHeader = debug.contains("slave");
 		reportExceptions = debug.contains("error");
+		try {
+			profile = new SessionService().fillProfileProperties(new GameProfile("93a09a98-1fbb-46da-85a6-f0bb1465dc53", "Aesen"));
+		} catch (ProfileException e) {
+			e.printStackTrace();
+		}
 	}
 	private GameProfile profile;
 	@Override
@@ -38,13 +43,6 @@ public class LapitarHandler extends AbstractHandler {
 				response.setStatus(405);
 				response.flushBuffer();
 				return;
-			}
-			if (profile == null) {
-				try {
-					profile = new SessionService().fillProfileProperties(new GameProfile("93a09a98-1fbb-46da-85a6-f0bb1465dc53", "Aesen"));
-				} catch (ProfileException e) {
-					e.printStackTrace();
-				}
 			}
 			RenderResponse resp;
 			try {
