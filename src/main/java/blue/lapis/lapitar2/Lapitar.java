@@ -14,7 +14,6 @@ import joptsimple.OptionSet;
 import blue.lapis.lapitar2.benchmark.LapitarBenchmark;
 import blue.lapis.lapitar2.master.LapitarMaster;
 import blue.lapis.lapitar2.slave.LapitarSlave;
-
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 
@@ -30,9 +29,12 @@ public class Lapitar {
 		con.setFormatter(logFormat);
 		log.setUseParentHandlers(false);
 		log.addHandler(con);
-		if (Boolean.parseBoolean(System.getProperty("blue.lapis.lapitar2.debug"))) {
+		if (Boolean.parseBoolean(System.getProperty("blue.lapis.lapitar2.trace"))) {
 			log.setLevel(Level.ALL);
 			con.setLevel(Level.ALL);
+		} else if (Boolean.parseBoolean(System.getProperty("blue.lapis.lapitar2.debug"))) {
+			log.setLevel(Level.FINER);
+			con.setLevel(Level.FINER);
 		} else {
 			log.setLevel(Level.FINE);
 			con.setLevel(Level.FINE);

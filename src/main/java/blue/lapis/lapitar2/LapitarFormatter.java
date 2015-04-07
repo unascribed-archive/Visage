@@ -25,6 +25,7 @@ public class LapitarFormatter extends Formatter {
 		colors.put(Level.SEVERE, Color.RED);
 		colors.put(Level.OFF, Color.MAGENTA);
 		
+		names.put(Level.FINEST, "TRCE");
 		names.put(Level.FINER, "DBUG");
 		names.put(Level.FINE, "FINE");
 		names.put(Level.INFO, "INFO");

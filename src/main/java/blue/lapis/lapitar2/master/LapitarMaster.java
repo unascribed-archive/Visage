@@ -53,7 +53,6 @@ import blue.lapis.lapitar2.master.exception.RenderFailedException;
 import blue.lapis.lapitar2.master.glue.HeaderHandler;
 import blue.lapis.lapitar2.master.glue.LogShim;
 import blue.lapis.lapitar2.slave.LapitarSlave;
-
 import com.google.common.collect.Maps;
 import com.google.common.io.ByteStreams;
 import com.rabbitmq.client.AMQP.BasicProperties;
