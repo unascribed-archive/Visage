@@ -37,7 +37,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.zip.DeflaterOutputStream;
 
-import org.apache.commons.io.IOUtils;
 import org.eclipse.jetty.server.AsyncNCSARequestLog;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.ResourceHandler;
@@ -47,8 +46,13 @@ import org.spacehq.mc.auth.properties.Property;
 
 import blue.lapis.lapitar2.Lapitar;
 import blue.lapis.lapitar2.RenderMode;
+import blue.lapis.lapitar2.master.exception.NoSlavesAvailableException;
+import blue.lapis.lapitar2.master.exception.RenderFailedException;
+import blue.lapis.lapitar2.master.glue.HeaderHandler;
+import blue.lapis.lapitar2.master.glue.LogShim;
 import blue.lapis.lapitar2.slave.LapitarSlave;
 
+import com.google.common.io.ByteStreams;
 import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
@@ -106,11 +110,11 @@ public class LapitarMaster extends Thread {
 			
 			conn = factory.newConnection();
 			channel = conn.createChannel();
-			Lapitar.log.info("Setting up queue '"+queue+"'");
+			Lapitar.log.finer("Setting up queue '"+queue+"'");
 			channel.queueDeclare(queue, false, false, true, null);
 			channel.basicQos(1);
 			
-			Lapitar.log.info("Setting up reply queue");
+			Lapitar.log.finer("Setting up reply queue");
 			replyQueue = channel.queueDeclare().getQueue();
 			consumer = new QueueingConsumer(channel);
 			channel.basicConsume(replyQueue, consumer);
@@ -129,7 +133,7 @@ public class LapitarMaster extends Thread {
 	private final ByteArrayOutputStream baos = new ByteArrayOutputStream();
 	private String replyQueue;
 	private QueueingConsumer consumer;
-	public RenderResponse renderRpc(RenderMode mode, int width, int height, int supersampling, GameProfile profile) throws RenderFailedException {
+	public RenderResponse renderRpc(RenderMode mode, int width, int height, int supersampling, GameProfile profile) throws RenderFailedException, NoSlavesAvailableException {
 		baos.reset();
 		try {
 			byte[] response = null;
@@ -145,7 +149,7 @@ public class LapitarMaster extends Thread {
 			dos.flush();
 			defos.finish();
 			channel.basicPublish("", config.getString("rabbitmq.queue"), props, baos.toByteArray());
-			Lapitar.log.info("Requested a "+width+"x"+height+" "+mode.name().toLowerCase()+" render ("+supersampling+"x supersampling) for "+profile.getName());
+			Lapitar.log.finer("Requested a "+width+"x"+height+" "+mode.name().toLowerCase()+" render ("+supersampling+"x supersampling) for "+profile.getName());
 			while (true) {
 				try {
 					Delivery delivery = consumer.nextDelivery(config.getDuration("render.timeout", TimeUnit.MILLISECONDS));
@@ -171,8 +175,8 @@ public class LapitarMaster extends Thread {
 			RenderResponse resp = new RenderResponse();
 			ByteArrayInputStream bais = new ByteArrayInputStream(response);
 			resp.slave = new DataInputStream(bais).readUTF();
-			resp.png = IOUtils.toByteArray(bais);
-			Lapitar.log.info("Receieved render from "+resp.slave);
+			resp.png = ByteStreams.toByteArray(bais);
+			Lapitar.log.finer("Receieved render from "+resp.slave);
 			return resp;
 		} catch (Exception e) {
 			if (e instanceof RenderFailedException)

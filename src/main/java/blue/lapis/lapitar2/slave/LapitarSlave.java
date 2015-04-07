@@ -10,6 +10,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Level;
@@ -17,10 +18,12 @@ import java.util.zip.InflaterInputStream;
 
 import javax.imageio.ImageIO;
 
-import org.apache.commons.io.Charsets;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
+import org.lwjgl.opengl.GLContext;
+import org.lwjgl.opengl.Pbuffer;
+import org.lwjgl.opengl.PixelFormat;
 import org.spacehq.mc.auth.GameProfile;
 import org.spacehq.mc.auth.ProfileTexture;
 import org.spacehq.mc.auth.ProfileTextureType;
@@ -29,12 +32,13 @@ import org.spacehq.mc.auth.properties.Property;
 import org.spacehq.mc.auth.util.Base64;
 import org.spacehq.mc.auth.util.URLUtils;
 
-import blue.lapis.lapitar2.Images;
 import blue.lapis.lapitar2.Lapitar;
 import blue.lapis.lapitar2.RenderMode;
-import blue.lapis.lapitar2.UUIDs;
 import blue.lapis.lapitar2.slave.render.Renderer;
+import blue.lapis.lapitar2.util.Images;
+import blue.lapis.lapitar2.util.UUIDs;
 
+import com.google.common.io.ByteStreams;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.rabbitmq.client.AMQP.BasicProperties;
@@ -60,9 +64,17 @@ public class LapitarSlave extends Thread {
 		this.config = config;
 		try {
 			name = config.getString("name");
+			if (name.startsWith("~")) {
+				String command = name.substring(1);
+				Lapitar.log.finer("Running command '"+command+"' to determine the slave's name");
+				Process proc = Runtime.getRuntime().exec(command);
+				byte[] bys = ByteStreams.toByteArray(proc.getInputStream());
+				name = new String(bys).replace("\n", "").replace("\r", "");
+			}
 		} catch (Exception e) {
 			name = "unnamed slave";
 		}
+		Lapitar.log.info("Slave name is '"+name+"'");
 		RenderMode[] modes = RenderMode.values();
 		renderers = new Renderer[modes.length];
 		for (int i = 0; i < modes.length; i++) {
@@ -76,8 +88,26 @@ public class LapitarSlave extends Thread {
 		System.setProperty("org.lwjgl.opengl.Display.noinput", "true");
 		try {
 			Lapitar.log.info("Setting up LWJGL");
-			Class.forName("org.lwjgl.opengl.Display");
-			Lapitar.log.info("Downloading default skins");
+			Pbuffer test = new Pbuffer(16, 16, new PixelFormat(8, 8, 0), null);
+			test.makeCurrent();
+			if (!GLContext.getCapabilities().GL_ARB_vertex_buffer_object) {
+				Lapitar.log.severe("Your graphics driver does not support ARB_vertex_buffer_object. The slave cannot continue.");
+				test.releaseContext();
+				return;
+			}
+			String glV = GL11.glGetString(GL11.GL_VERSION);
+			String os = System.getProperty("os.name");
+			Lapitar.log.info("OpenGL "+glV+" on "+os);
+			if (os.contains("Win")) {
+				Lapitar.log.severe("Lapitar does not support Windows. Continue at your own peril!");
+			}
+			if (!glV.contains("Mesa")) {
+				Lapitar.log.warning("You are using an unsupported graphics driver.");
+			}
+			if (os.equals("Linux") && glV.contains("Mesa")) {
+				Lapitar.log.fine("Lapitar fully supports your OS and graphics driver.");
+			}
+			Lapitar.log.finer("Downloading default skins");
 			steve = ImageIO.read(URLUtils.constantURL("https://minecraft.net/images/steve.png"));
 			alex = ImageIO.read(URLUtils.constantURL("https://minecraft.net/images/alex.png"));
 			Lapitar.log.info("Connecting to RabbitMQ at "+config.getString("rabbitmq.host")+":"+config.getInt("rabbitmq.port"));
@@ -88,7 +118,7 @@ public class LapitarSlave extends Thread {
 			
 			Connection conn = factory.newConnection();
 			channel = conn.createChannel();
-			Lapitar.log.info("Setting up queue '"+queue+"'");
+			Lapitar.log.finer("Setting up queue '"+queue+"'");
 			channel.queueDeclare(queue, false, false, true, null);
 			channel.basicQos(1);
 			
@@ -116,10 +146,10 @@ public class LapitarSlave extends Thread {
 					}
 				}
 			} catch (Exception e) {
-				Lapitar.log.log(Level.SEVERE, "A fatal error has occurred in the slave run loop. Lapitar cannot continue.", e);
+				Lapitar.log.log(Level.SEVERE, "A fatal error has occurred in the slave run loop. The slave cannot continue.", e);
 			}
 		} catch (Exception e) {
-			Lapitar.log.log(Level.SEVERE, "A fatal error has occurred while setting up the slave. Lapitar cannot continue.", e);
+			Lapitar.log.log(Level.SEVERE, "A fatal error has occurred while setting up the slave. The slave cannot continue.", e);
 		}
 	}
 
@@ -132,7 +162,7 @@ public class LapitarSlave extends Thread {
 		int height = data.readUnsignedShort();
 		int supersampling = data.readUnsignedByte();
 		GameProfile profile = readGameProfile(data);
-		Lapitar.log.info("Rendering a "+width+"x"+height+" "+mode.name().toLowerCase()+" ("+supersampling+"x supersampling) for "+profile.getName());
+		Lapitar.log.finer("Rendering a "+width+"x"+height+" "+mode.name().toLowerCase()+" ("+supersampling+"x supersampling) for "+profile.getName());
 		byte[] pngBys = draw(mode, width, height, supersampling, profile);
 		ByteArrayOutputStream result = new ByteArrayOutputStream();
 		new DataOutputStream(result).writeUTF(name);
@@ -193,7 +223,7 @@ public class LapitarSlave extends Thread {
 	}
 
 	private boolean isSlim(GameProfile profile) throws IOException {
-		String texJson = new String(Base64.decode(profile.getProperties().get("textures").getValue().getBytes(Charsets.UTF_8)));
+		String texJson = new String(Base64.decode(profile.getProperties().get("textures").getValue().getBytes(StandardCharsets.UTF_8)));
 		JsonObject obj = gson.fromJson(texJson, JsonObject.class);
 		JsonObject tex = obj.getAsJsonObject("textures");
 		if (tex.has("SKIN")) {
