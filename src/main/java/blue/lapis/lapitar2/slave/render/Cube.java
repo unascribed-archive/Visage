@@ -49,10 +49,6 @@ public class Cube {
 
 	public void render(Renderer renderer) {
 		glPushMatrix();
-			glDisable(GL_TEXTURE_2D);
-			glDisable(GL_LIGHTING);
-			glEnable(GL_DEPTH_TEST);
-	
 			Lapitar.log.finest("Translating cube to "+x+", "+y+", "+z);
 			glTranslatef(x, y, z);
 			Lapitar.log.finest("Rotating cube by "+rotX+"°, "+rotY+"°, "+rotZ+"°");

@@ -9,7 +9,6 @@ import org.lwjgl.LWJGLException;
 import org.lwjgl.opengl.Pbuffer;
 import org.lwjgl.opengl.PixelFormat;
 import org.lwjgl.opengl.Util;
-import org.lwjgl.util.glu.GLU;
 
 import blue.lapis.lapitar2.Lapitar;
 
@@ -17,6 +16,7 @@ import com.google.common.collect.Lists;
 
 import static org.lwjgl.opengl.ARBVertexBufferObject.*;
 import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.util.glu.GLU.gluPerspective;
 
 public abstract class Renderer {
 	protected static final float vertices[] = {
@@ -101,6 +101,15 @@ public abstract class Renderer {
 		glBufferDataARB(GL_ARRAY_BUFFER_ARB, vertexBuffer, GL_STATIC_DRAW_ARB);
 		Util.checkGLError();
 		
+		glClearColor(0, 0, 0, 0);
+		glClearDepth(1.0);
+		glShadeModel(GL_SMOOTH);
+		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_LEQUAL);
+		glCullFace(GL_BACK);
+		glDisable(GL_LIGHTING);
+		Util.checkGLError();
+		
 		Lapitar.log.finer("["+name+"] Initializing cubes");
 		initCubes();
 		initialized = true;
@@ -111,15 +120,9 @@ public abstract class Renderer {
 	protected abstract void initCubes();
 	protected void initGL(float width, float height) throws LWJGLException {
 		pbuffer.makeCurrent();
-		glClearColor(0, 0, 0, 1);
-		glClearDepth(1.0);
-		glShadeModel(GL_SMOOTH);
-		//glEnable(GL_DEPTH_TEST);
-		//glDepthFunc(GL_LEQUAL);
-		
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
-		GLU.gluPerspective(
+		gluPerspective(
 				45.0f,
 				width / height,
 				0.1f,
