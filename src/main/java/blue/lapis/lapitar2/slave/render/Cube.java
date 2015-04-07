@@ -1,19 +1,11 @@
 package blue.lapis.lapitar2.slave.render;
 
-import java.nio.ByteBuffer;
-import java.nio.FloatBuffer;
-
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL15;
+import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.opengl.ARBVertexBufferObject.*;
 import org.lwjgl.opengl.Util;
 
 public class Cube {
 
-	private FloatBuffer vertexBuffer;
-	private ByteBuffer indexBuffer;
-
-	private int texture;
-	
 	private float[] uv = {
 			// Front
 			0.25f, 1.00f,
@@ -53,36 +45,33 @@ public class Cube {
 	public float scaleZ = 1.0f;
 	public float x, y, z, rotX, rotY, rotZ;
 
-	public Cube(int textureId) {
-		this.texture = textureId;
-	}
-
 	public void render(Renderer renderer) {
-		GL11.glPushMatrix();
-			GL11.glDisable(GL11.GL_TEXTURE_2D);
+		glPushMatrix();
+			glDisable(GL_TEXTURE_2D);
+			glDisable(GL_LIGHTING);
 	
-			GL11.glTranslatef(x, y, z);
-			GL11.glRotatef(rotX, 1.0f, 0.0f, 0.0f);
-			GL11.glRotatef(rotY, 0.0f, 1.0f, 0.0f);
-			GL11.glRotatef(rotZ, 0.0f, 0.0f, 1.0f);
-			GL11.glScalef(scaleX, scaleY, scaleZ);
+			glTranslatef(x, y, z);
+			glRotatef(rotX, 1.0f, 0.0f, 0.0f);
+			glRotatef(rotY, 0.0f, 1.0f, 0.0f);
+			glRotatef(rotZ, 0.0f, 0.0f, 1.0f);
+			glScalef(scaleX, scaleY, scaleZ);
 			Util.checkGLError();
 			
-		    GL11.glEnableClientState(GL11.GL_VERTEX_ARRAY);
-		    GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, renderer.vbo);
-		    GL11.glVertexPointer(3, GL11.GL_FLOAT, 0, 0);
+		    glEnableClientState(GL_VERTEX_ARRAY);
+		    glBindBufferARB(GL_ARRAY_BUFFER_ARB, renderer.vbo);
+		    glVertexPointer(3, GL_FLOAT, 0, 0);
 		    Util.checkGLError();
 		     
-		    GL11.glEnableClientState(GL11.GL_COLOR_ARRAY);
-		    GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, renderer.cvbo);
-		    GL11.glColorPointer(4, GL11.GL_FLOAT, 0, 0);
+		    glEnableClientState(GL_COLOR_ARRAY);
+		    glBindBufferARB(GL_ARRAY_BUFFER_ARB, renderer.cvbo);
+		    glColorPointer(4, GL_FLOAT, 0, 0);
 		    Util.checkGLError();
 		    
-			GL11.glFrontFace(GL11.GL_CCW);
-			GL15.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, renderer.ibo);
-			GL11.glDrawElements(GL11.GL_TRIANGLES, Renderer.indices.length, GL11.GL_UNSIGNED_INT, 0);
+			glFrontFace(GL_CCW);
+			glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, renderer.ibo);
+			glDrawElements(GL_TRIANGLES, Renderer.indices.length, GL_UNSIGNED_INT, 0);
 			Util.checkGLError();
-		GL11.glPopMatrix();
+		glPopMatrix();
 	}
 }
 

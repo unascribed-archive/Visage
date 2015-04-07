@@ -7,8 +7,6 @@ import java.util.List;
 
 import org.lwjgl.BufferUtils;
 import org.lwjgl.LWJGLException;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.Pbuffer;
 import org.lwjgl.opengl.PixelFormat;
 import org.lwjgl.opengl.Util;
@@ -17,6 +15,9 @@ import org.lwjgl.util.glu.GLU;
 import blue.lapis.lapitar2.Lapitar;
 
 import com.google.common.collect.Lists;
+
+import static org.lwjgl.opengl.ARBVertexBufferObject.*;
+import static org.lwjgl.opengl.GL11.*;
 
 public abstract class Renderer {
 	protected static final float vertices[] = {
@@ -130,7 +131,7 @@ public abstract class Renderer {
 		pbuffer.makeCurrent();
 		Lapitar.log.info("["+name+"] Setting up VBOs");
 		IntBuffer ids = BufferUtils.createIntBuffer(3);
-		GL15.glGenBuffers(ids);
+		glGenBuffersARB(ids);
 		vbo = ids.get();
 		cvbo = ids.get();
 		ibo = ids.get();
@@ -138,20 +139,20 @@ public abstract class Renderer {
 		
 		FloatBuffer vertexBuffer = BufferUtils.createFloatBuffer(vertices.length);
 		vertexBuffer.put(vertices);
-		GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-		GL15.glBufferData(GL15.GL_ARRAY_BUFFER, vertexBuffer, GL15.GL_STATIC_DRAW);
+		glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo);
+		glBufferDataARB(GL_ARRAY_BUFFER_ARB, vertexBuffer, GL_STATIC_DRAW_ARB);
 		Util.checkGLError();
 
 		FloatBuffer colorBuffer = BufferUtils.createFloatBuffer(colors.length);
 		colorBuffer.put(colors);
-		GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, cvbo);
-		GL15.glBufferData(GL15.GL_ARRAY_BUFFER, colorBuffer, GL15.GL_STATIC_DRAW);
+		glBindBufferARB(GL_ARRAY_BUFFER_ARB, cvbo);
+		glBufferDataARB(GL_ARRAY_BUFFER_ARB, colorBuffer, GL_STATIC_DRAW_ARB);
 		Util.checkGLError();
 		
 		ByteBuffer indexBuffer = BufferUtils.createByteBuffer(indices.length);
 		indexBuffer.put(indices);
-		GL15.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ibo);
-		GL15.glBufferData(GL15.GL_ARRAY_BUFFER, indexBuffer, GL15.GL_STATIC_DRAW);
+		glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, ibo);
+		glBufferDataARB(GL_ELEMENT_ARRAY_BUFFER_ARB, indexBuffer, GL_STATIC_DRAW_ARB);
 		Util.checkGLError();
 		
 		Lapitar.log.info("["+name+"] Initializing cubes");
@@ -164,22 +165,22 @@ public abstract class Renderer {
 	protected abstract void initCubes();
 	protected void initGL(float width, float height) throws LWJGLException {
 		pbuffer.makeCurrent();
-		GL11.glClearColor(0, 0, 0, 0);
-		GL11.glClearDepth(1.0);
-		GL11.glShadeModel(GL11.GL_SMOOTH);
-		//GL11.glEnable(GL11.GL_DEPTH_TEST);
-		//GL11.glDepthFunc(GL11.GL_LEQUAL);
+		glClearColor(0, 0, 0, 1);
+		glClearDepth(1.0);
+		glShadeModel(GL_SMOOTH);
+		//glEnable(GL_DEPTH_TEST);
+		//glDepthFunc(GL_LEQUAL);
 		
-		GL11.glMatrixMode(GL11.GL_PROJECTION);
-		GL11.glLoadIdentity();
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
 		GLU.gluPerspective(
 				45.0f,
 				width / height,
 				0.1f,
 				100.0f);
-		GL11.glHint(GL11.GL_PERSPECTIVE_CORRECTION_HINT, GL11.GL_NICEST);
-		GL11.glMatrixMode(GL11.GL_MODELVIEW);
-		GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+		glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
+		glMatrixMode(GL_MODELVIEW);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		initCubes(); // TODO remove, this method should only be called during first init
 	}
 	public void finish() throws LWJGLException {
