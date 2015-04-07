@@ -9,19 +9,20 @@ public class HeadRenderer extends Renderer {
 	protected void initCubes() {
 		Lapitar.log.info("initCubes");
 		cubes.clear();
-		helm = new Cube();
+		/*helm = new Cube();
 		helm.scaleX = helm.scaleY = helm.scaleZ = 1.1f;
-		helm.z = -5;
+		helm.x = 0;
 		helm.y = 0.25f;
-		helm.rotX = 25f;
-		helm.rotY = 45f;
-		addCube(helm);
+		helm.z = -5f;
+		helm.rotX = ((float)Math.random()*90f)-45f;
+		helm.rotY = ((float)Math.random()*90f)-45f;
+		addCube(helm);*/
 		head = new Cube();
+		head.x = 0;
+		head.y = 0.3f;
 		head.z = -5.05f;
-		head.y = 0.30f;
-		head.rotX = 25f;
-		head.rotY = 45f;
+		head.rotX = ((float)Math.random()*90f)-45f;
+		head.rotY = ((float)Math.random()*90f)-45f;
 		addCube(head);
 	}
-	
 }
