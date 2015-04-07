@@ -50,7 +50,7 @@ public class Cube {
 		glPushMatrix();
 			glDisable(GL_TEXTURE_2D);
 			glDisable(GL_LIGHTING);
-			glDisable(GL_CULL_FACE);
+			glEnable(GL_DEPTH_TEST);
 	
 			Lapitar.log.finest("Translating cube to "+x+", "+y+", "+z);
 			glTranslatef(x, y, z);
@@ -71,15 +71,16 @@ public class Cube {
 		    Lapitar.log.finest("Rendering");
 			glDrawArrays(GL_QUADS, 0, Renderer.vertices.length);
 			Util.checkGLError();*/
-			glFrontFace(GL_CCW);
+			glFrontFace(GL_CW);
 			glBegin(GL_QUADS);
 			for (int i = 0; i < Renderer.vertices.length/3; i++) {
-				float x = Renderer.vertices[i];
-				float y = Renderer.vertices[i+1];
-				float z = Renderer.vertices[i+2];
+				int idx = i*3;
+				float x = Renderer.vertices[idx];
+				float y = Renderer.vertices[idx+1];
+				float z = Renderer.vertices[idx+2];
 				Lapitar.log.finest("Vertex "+x+", "+y+", "+z);
 				glVertex3f(x, y, z);
-				glColor3f(1, 1, 1);
+				glColor3f((float)Math.random(), (float)Math.random(), (float)Math.random());
 			}
 			glEnd();
 			Util.checkGLError();
