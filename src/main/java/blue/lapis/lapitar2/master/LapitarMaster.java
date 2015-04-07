@@ -134,19 +134,19 @@ public class LapitarMaster extends Thread {
 			try {
 				while (true) {
 					Delivery delivery = consumer.nextDelivery();
-					Lapitar.log.finer("Got delivery");
+					Lapitar.log.finest("Got delivery");
 					try {
 						String corrId = delivery.getProperties().getCorrelationId();
 						if (queuedJobs.containsKey(corrId)) {
-							Lapitar.log.finer("Valid");
+							Lapitar.log.finest("Valid");
 							responses.put(corrId, delivery.getBody());
 							Runnable run = queuedJobs.get(corrId);
 							queuedJobs.remove(corrId);
-							Lapitar.log.finer("Removed from queue");
+							Lapitar.log.finest("Removed from queue");
 							run.run();
-							Lapitar.log.finer("Ran runnable");
+							Lapitar.log.finest("Ran runnable");
 							channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
-							Lapitar.log.finer("Ack'd");
+							Lapitar.log.finest("Ack'd");
 						} else {
 							Lapitar.log.warning("Unknown correlation ID?");
 							channel.basicNack(delivery.getEnvelope().getDeliveryTag(), false, false);
@@ -200,12 +200,12 @@ public class LapitarMaster extends Thread {
 			long timeout = config.getDuration("render.timeout", TimeUnit.MILLISECONDS);
 			synchronized (waiter) {
 				while (queuedJobs.containsKey(corrId) && (System.currentTimeMillis()-start) < timeout) {
-					Lapitar.log.finer("Waiting...");
+					Lapitar.log.finest("Waiting...");
 					waiter.wait(timeout);
 				}
 			}
 			if (queuedJobs.containsKey(corrId)) {
-				Lapitar.log.finer("Queue still contains this request, assuming timeout");
+				Lapitar.log.finest("Queue still contains this request, assuming timeout");
 				queuedJobs.remove(corrId);
 				throw new RenderFailedException("Request timed out");
 			}
@@ -218,14 +218,14 @@ public class LapitarMaster extends Thread {
 			int type = bais.read();
 			byte[] payload = ByteStreams.toByteArray(bais);
 			if (type == 0) {
-				Lapitar.log.finer("Got type 0, success");
+				Lapitar.log.finest("Got type 0, success");
 				RenderResponse resp = new RenderResponse();
 				resp.slave = slave;
 				resp.png = payload;
 				Lapitar.log.finer("Receieved render from "+resp.slave);
 				return resp;
 			} else if (type == 1) {
-				Lapitar.log.finer("Got type 1, failure");
+				Lapitar.log.finest("Got type 1, failure");
 				ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(payload));
 				Throwable t = (Throwable)ois.readObject();
 				throw new RenderFailedException("Slave reported error", t);

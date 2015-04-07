@@ -25,13 +25,13 @@ public class LapitarFormatter extends Formatter {
 		colors.put(Level.SEVERE, Color.RED);
 		colors.put(Level.OFF, Color.MAGENTA);
 		
-		names.put(Level.FINEST, "TRCE");
-		names.put(Level.FINER, "DBUG");
-		names.put(Level.FINE, "FINE");
-		names.put(Level.INFO, "INFO");
-		names.put(Level.WARNING, "WARN");
-		names.put(Level.SEVERE, "EROR");
-		names.put(Level.OFF, "FATL");
+		names.put(Level.FINEST, "TRACE");
+		names.put(Level.FINER, "DEBUG");
+		names.put(Level.FINE, " FINE");
+		names.put(Level.INFO, " INFO");
+		names.put(Level.WARNING, " WARN");
+		names.put(Level.SEVERE, "ERROR");
+		names.put(Level.OFF, "FATAL");
 	}
 	@Override
 	public String format(LogRecord record) {
@@ -49,7 +49,7 @@ public class LapitarFormatter extends Formatter {
 			ansi.reset();
 		}
 		ansi.a(Strings.padStart(Thread.currentThread().getName(), 22, ' '));
-		ansi.a("/");
+		ansi.a(" ");
 		if (Lapitar.ansi && colors.containsKey(record.getLevel())) {
 			ansi.fgBright(colors.get(record.getLevel()));
 		}

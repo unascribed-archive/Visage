@@ -68,7 +68,7 @@ public class LogShim extends AbstractLogger {
 
 	@Override
 	public void debug(String msg, Object... args) {
-		log.fine(String.format(msg, args));
+		log.finer(String.format(msg, args));
 	}
 
 	@Override
