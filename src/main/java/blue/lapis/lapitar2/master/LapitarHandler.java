@@ -16,6 +16,8 @@ import org.spacehq.mc.auth.exception.ProfileException;
 
 import blue.lapis.lapitar2.Lapitar;
 import blue.lapis.lapitar2.RenderMode;
+import blue.lapis.lapitar2.master.exception.NoSlavesAvailableException;
+import blue.lapis.lapitar2.master.exception.RenderFailedException;
 
 public class LapitarHandler extends AbstractHandler {
 	private final LapitarMaster master;
@@ -30,6 +32,13 @@ public class LapitarHandler extends AbstractHandler {
 	@Override
 	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
 		if ("/test".equals(target)) {
+			if (!"GET".equals(request.getMethod())) {
+				response.setContentType("text/plain;charset=utf-8");
+				response.getWriter().println("Unsupported method");
+				response.setStatus(405);
+				response.flushBuffer();
+				return;
+			}
 			if (profile == null) {
 				try {
 					profile = new SessionService().fillProfileProperties(new GameProfile("93a09a98-1fbb-46da-85a6-f0bb1465dc53", "Aesen"));
@@ -40,7 +49,7 @@ public class LapitarHandler extends AbstractHandler {
 			RenderResponse resp;
 			try {
 				resp = master.renderRpc(RenderMode.HEAD, 2048, 2048, 4, profile);
-			} catch (Exception e) {
+			} catch (RenderFailedException e) {
 				Lapitar.log.log(Level.WARNING, "An error occurred while rendering a request", e);
 				response.setContentType("text/plain");
 				if (reportExceptions) {
@@ -51,9 +60,15 @@ public class LapitarHandler extends AbstractHandler {
 				response.setStatus(500);
 				response.flushBuffer();
 				return;
+			} catch (NoSlavesAvailableException e) {
+				response.setContentType("text/plain;charset=utf-8");
+				response.getWriter().println("No slaves are available to render your request");
+				response.setStatus(503);
+				response.flushBuffer();
+				return;
 			}
 			if (resp == null) {
-				response.setContentType("text/plain");
+				response.setContentType("text/plain;charset=utf-8");
 				response.getWriter().println("Could not render your request");
 				response.setStatus(500);
 				response.flushBuffer();
