@@ -117,6 +117,7 @@ public class LapitarSlave extends Thread {
 				while (true) {
 					try {
 						Delivery delivery = consumer.nextDelivery();
+						Lapitar.log.finer("Received job, passing on to render thread");
 						RenderThread thread = threads.get(idx);
 						thread.process(delivery);
 						idx++;

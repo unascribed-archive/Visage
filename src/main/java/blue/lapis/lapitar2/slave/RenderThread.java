@@ -170,13 +170,15 @@ public class RenderThread extends Thread {
 					renderer.init(supersampling);
 				}
 				try {
+					Lapitar.log.finest("Uploading");
+					renderer.upload(skin.getSubimage(0, 0, 32, 16));
 					Lapitar.log.finest("Rendering");
 					renderer.render(width, height);
 					Lapitar.log.finest("Rendered - reading pixels");
 					GL11.glReadBuffer(GL11.GL_FRONT);
 					ByteBuffer buf = BufferUtils.createByteBuffer(width * height * 4);
 					GL11.glReadPixels(0, 0, width, height, GL12.GL_BGRA, GL11.GL_UNSIGNED_BYTE, buf);
-					BufferedImage img  = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+					BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
 					int[] pixels = new int[width*height];
 					buf.asIntBuffer().get(pixels);
 					img.setRGB(0, 0, width, height, pixels, 0, width);
