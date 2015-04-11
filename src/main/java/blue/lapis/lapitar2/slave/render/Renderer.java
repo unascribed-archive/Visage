@@ -1,13 +1,13 @@
 package blue.lapis.lapitar2.slave.render;
 
 import java.awt.image.BufferedImage;
-import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.List;
 
 import org.lwjgl.BufferUtils;
 import org.lwjgl.LWJGLException;
+import org.lwjgl.opengl.ContextAttribs;
 import org.lwjgl.opengl.Pbuffer;
 import org.lwjgl.opengl.PixelFormat;
 
@@ -18,6 +18,7 @@ import com.google.common.collect.Lists;
 
 import static org.lwjgl.opengl.ARBVertexBufferObject.*;
 import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.opengl.GL12.*;
 import static org.lwjgl.opengl.Util.checkGLError;
 import static org.lwjgl.util.glu.GLU.gluPerspective;
 
@@ -25,34 +26,58 @@ public abstract class Renderer {
 	public static final float vertices[] = {
 		// Front
 		-1.0f, -1.0f,  1.0f,
+		 0.000f, 0.000f,
 		 1.0f, -1.0f,  1.0f,
+		 1.000f, 0.000f,
 		 1.0f,  1.0f,  1.0f,
+		 1.000f, 1.000f,
 		-1.0f,  1.0f,  1.0f,
+		 0.000f, 1.000f,
 		// Back
 		-1.0f, -1.0f, -1.0f,
+		 0.000f, 0.000f,
 		 1.0f, -1.0f, -1.0f,
+		 1.000f, 0.000f,
 		 1.0f,  1.0f, -1.0f,
+		 1.000f, 1.000f,
 		-1.0f,  1.0f, -1.0f,
+		 0.000f, 1.000f,
 		// Top
 		-1.0f,  1.0f,  1.0f,
+		 0.000f, 0.000f,
 		 1.0f,  1.0f,  1.0f,
+		 1.000f, 0.000f,
 		 1.0f,  1.0f, -1.0f,
+		 1.000f, 1.000f,
 		-1.0f,  1.0f, -1.0f,
+		 0.000f, 1.000f,
 		// Bottom
 		-1.0f, -1.0f, -1.0f,
+		 0.000f, 0.000f,
 		 1.0f, -1.0f, -1.0f,
+		 1.000f, 0.000f,
 		 1.0f, -1.0f,  1.0f,
+		 1.000f, 1.000f,
 		-1.0f, -1.0f,  1.0f,
+		 0.000f, 1.000f,
 		// Left
 		 1.0f, -1.0f,  1.0f,
+		 0.000f, 0.000f,
 		 1.0f, -1.0f, -1.0f,
+		 1.000f, 0.000f,
 		 1.0f,  1.0f, -1.0f,
+		 1.000f, 1.000f,
 		 1.0f,  1.0f,  1.0f,
+		 0.000f, 1.000f,
 		// Right
 		-1.0f, -1.0f, -1.0f,
+		 0.000f, 0.000f,
 		-1.0f, -1.0f,  1.0f,
+		 1.000f, 0.000f,
 		-1.0f,  1.0f,  1.0f,
-		-1.0f,  1.0f, -1.0f
+		 1.000f, 1.000f,
+		-1.0f,  1.0f, -1.0f,
+		 0.000f, 1.000f,
 	};
 	public static final float planeVertices[] = {
 		-1.0f,  0.0f,  1.0f,
@@ -75,13 +100,14 @@ public abstract class Renderer {
 		Lapitar.log.finer("Uploading "+width+"x"+height+" ("+(width*height)+" pixel) image");
 		int[] argb = new int[width*height];
 		img.getRGB(0, 0, width, height, argb, 0, width);
-		ByteBuffer buf = BufferUtils.createByteBuffer(width*height*4);
-		buf.asIntBuffer().put(argb);
-		buf.position(0);
+		IntBuffer buf = BufferUtils.createIntBuffer(width*height);
+		buf.put(argb);
+		buf.flip();
 		glBindTexture(GL_TEXTURE_2D, texture);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, buf);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		checkGLError();
 	}
 	protected void preRender(int width, int height) throws LWJGLException {}
 	protected void postRender(int width, int height) throws LWJGLException {}
@@ -108,7 +134,7 @@ public abstract class Renderer {
 		if (pbuffer != null) {
 			destroy();
 		}
-		pbuffer = new Pbuffer(512*supersampling, 512*supersampling, new PixelFormat(8, 8, 0), null);
+		pbuffer = new Pbuffer(512*supersampling, 512*supersampling, new PixelFormat(8, 8, 0), null, null, new ContextAttribs(1, 2));
 		if (pbuffer.isBufferLost())
 			throw new LWJGLException("Could not create Pbuffer");
 		pbuffer.makeCurrent();
@@ -174,7 +200,6 @@ public abstract class Renderer {
 		glEnable(GL_LIGHTING);
 		glEnable(GL_LIGHT0);
 		checkGLError();
-		
 		
 		Lapitar.log.finer("["+name+"] Initializing primitives");
 		initPrimitives();

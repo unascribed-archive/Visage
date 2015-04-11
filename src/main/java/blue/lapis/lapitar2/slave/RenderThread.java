@@ -171,7 +171,7 @@ public class RenderThread extends Thread {
 				}
 				try {
 					Lapitar.log.finest("Uploading");
-					renderer.upload(skin.getSubimage(0, 0, 32, 16));
+					renderer.upload(skin);
 					Lapitar.log.finest("Rendering");
 					renderer.render(width, height);
 					Lapitar.log.finest("Rendered - reading pixels");

@@ -11,9 +11,11 @@ import org.fusesource.jansi.AnsiConsole;
 
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
+import joptsimple.OptionSpec;
 import blue.lapis.lapitar2.benchmark.LapitarBenchmark;
 import blue.lapis.lapitar2.master.LapitarMaster;
 import blue.lapis.lapitar2.slave.LapitarSlave;
+
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 
@@ -40,17 +42,26 @@ public class Lapitar {
 			con.setLevel(Level.FINE);
 		}
 		OptionParser parser = new OptionParser();
-		parser.acceptsAll(Arrays.asList("master", "m"), "Start Lapitar as a master.");
-		parser.acceptsAll(Arrays.asList("slave", "s"), "Start Lapitar as a slave.");
-		parser.acceptsAll(Arrays.asList("benchmark", "b"), "Run a benchmark on the current machine.");
+		parser.acceptsAll(Arrays.asList("master", "m"), "Start Lapitar as a master");
+		parser.acceptsAll(Arrays.asList("slave", "s"), "Start Lapitar as a slave");
+		parser.acceptsAll(Arrays.asList("benchmark", "b"), "Run a benchmark on the current machine");
+		OptionSpec<File> fileSwitch;
+		fileSwitch = parser.acceptsAll(Arrays.asList("config", "c"), "Load the given config file instead of the default conf/[mode].conf").withRequiredArg().ofType(File.class);
 		OptionSet set = parser.parse(args);
+		File confFile = fileSwitch.value(set);
 		if (set.has("master")) {
-			Config conf = ConfigFactory.parseFile(new File("conf/master.conf"));
+			if (confFile == null) {
+				confFile = new File("conf/master.conf");
+			}
+			Config conf = ConfigFactory.parseFile(confFile);
 			ansi = conf.getBoolean("ansi");
 			log.info("Starting Lapitar v"+VERSION+" as a master");
 			new LapitarMaster(conf).start();
 		} else if (set.has("slave")) {
-			Config conf = ConfigFactory.parseFile(new File("conf/slave.conf"));
+			if (confFile == null) {
+				confFile = new File("conf/slave.conf");
+			}
+			Config conf = ConfigFactory.parseFile(confFile);
 			ansi = conf.getBoolean("ansi");
 			log.info("Starting Lapitar v"+VERSION+" as a slave");
 			new LapitarSlave(conf).start();

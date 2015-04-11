@@ -15,10 +15,10 @@ public class HeadRenderer extends Renderer {
 		shadow = new Plane();
 		shadow.x = 0f;
 		shadow.y = 0.7f;
-		shadow.z = -5.4f;
+		shadow.z = -6.5f;
 		shadow.rotX = -25;
 		shadow.rotY = 45;
-		shadow.scaleX = shadow.scaleZ = 1.3f;
+		shadow.scaleX = shadow.scaleZ = 1.5f;
 		shadow.textured = false;
 		shadow.lit = false;
 		shadow.r = shadow.g = shadow.b = 0;
@@ -31,13 +31,13 @@ public class HeadRenderer extends Renderer {
 		head.rotX = -25;
 		head.rotY = 45;
 		addPrimitive(head);
-		helm = new Cube();
+		/*helm = new Cube();
 		helm.scaleX = helm.scaleY = helm.scaleZ = 1.1f;
 		helm.x = 0;
 		helm.y = -0.25f;
 		helm.z = -5f;
 		helm.rotX = -25;
 		helm.rotY = 45;
-		addPrimitive(helm);
+		addPrimitive(helm);*/
 	}
 }

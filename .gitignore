@@ -49,3 +49,4 @@ build/
 gradle-app.setting
 !gradle/wrapper/gradle-wrapper.jar
 /logs/
+/local/

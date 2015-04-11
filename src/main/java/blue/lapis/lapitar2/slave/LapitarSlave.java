@@ -7,6 +7,7 @@ import java.util.logging.Level;
 
 import javax.imageio.ImageIO;
 
+import org.lwjgl.opengl.ContextAttribs;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GLContext;
 import org.lwjgl.opengl.Pbuffer;
@@ -15,6 +16,7 @@ import org.spacehq.mc.auth.SessionService;
 import org.spacehq.mc.auth.util.URLUtils;
 
 import blue.lapis.lapitar2.Lapitar;
+
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.io.ByteStreams;
@@ -60,7 +62,7 @@ public class LapitarSlave extends Thread {
 		System.setProperty("org.lwjgl.opengl.Display.noinput", "true");
 		try {
 			Lapitar.log.info("Setting up LWJGL");
-			Pbuffer test = new Pbuffer(16, 16, new PixelFormat(8, 8, 0), null);
+			Pbuffer test = new Pbuffer(16, 16, new PixelFormat(8, 8, 0), null, null, new ContextAttribs(1, 2));
 			test.makeCurrent();
 			if (!GLContext.getCapabilities().GL_ARB_vertex_buffer_object) {
 				Lapitar.log.severe("Your graphics driver does not support ARB_vertex_buffer_object. The slave cannot continue.");
