@@ -57,7 +57,11 @@ public class Visage {
 			ansi = conf.getBoolean("ansi");
 			log.info("Starting Visage v"+VERSION+" as a master");
 			new VisageMaster(conf).start();
-		} else if (set.has("slave")) {
+		} else if (set.has("benchmark")) {
+			ansi = true;
+			log.info("Running a benchmark...");
+			new VisageBenchmark().start();
+		} else {
 			if (confFile == null) {
 				confFile = new File("conf/slave.conf");
 			}
@@ -65,13 +69,6 @@ public class Visage {
 			ansi = conf.getBoolean("ansi");
 			log.info("Starting Visage v"+VERSION+" as a slave");
 			new VisageSlave(conf).start();
-		} else if (set.has("benchmark")) {
-			ansi = true;
-			log.info("Running a benchmark...");
-			new VisageBenchmark().start();
-		} else {
-			System.err.println("You must specify a mode to start Visage in.");
-			parser.printHelpOn(System.err);
 		}
 	}
 }
