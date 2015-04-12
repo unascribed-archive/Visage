@@ -143,7 +143,7 @@ public class SessionService {
 			return profile;
 
 		try {
-			// Lapitar - add ?unsigned=false
+			// Visage - add ?unsigned=false
 			URL url = URLUtils.constantURL("https://sessionserver.mojang.com/session/minecraft/profile/" + UUIDSerializer.fromUUID(profile.getId()) + "?unsigned=false");
 			MinecraftProfilePropertiesResponse response = URLUtils.makeRequest(url, null, MinecraftProfilePropertiesResponse.class);
 			if(response == null)

@@ -11,9 +11,9 @@ plugins {
 defaultTasks 'clean', 'licenseFormat', 'build'
 
 // Project information
-group = 'blue.lapis'
-version = '2.0.0-SNAPSHOT'
-archivesBaseName = 'Lapitar'
+group = 'com.gameminers'
+version = '1.0.0-SNAPSHOT'
+archivesBaseName = 'Visage'
 
 sourceCompatibility = 1.7
 targetCompatibility = 1.7
@@ -60,7 +60,7 @@ natives {
 // License header formatting
 license {
     header file('LICENSE')
-	include 'src/main/java/blue/lapis/**/*'
+	include 'src/main/java/com/gameminers/**/*'
     sourceSets = project.sourceSets
     ignoreFailures false
     strictCheck true
