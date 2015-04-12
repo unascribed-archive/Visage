@@ -1,9 +1,12 @@
 package blue.lapis.lapitar2.slave.render;
 
 import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.List;
+
+import javax.imageio.ImageIO;
 
 import org.lwjgl.BufferUtils;
 import org.lwjgl.LWJGLException;
@@ -23,7 +26,7 @@ import static org.lwjgl.opengl.Util.checkGLError;
 import static org.lwjgl.util.glu.GLU.gluPerspective;
 
 public abstract class Renderer {
-	public static final float vertices[] = {
+	public static final float[] vertices = {
 		// Front
 		-1.0f, -1.0f,  1.0f,
 		 0.000f, 0.000f,
@@ -79,22 +82,43 @@ public abstract class Renderer {
 		-1.0f,  1.0f, -1.0f,
 		 0.000f, 1.000f,
 	};
-	public static final float planeVertices[] = {
+	public static final float[] planeVertices = {
 		-1.0f,  0.0f,  1.0f,
+		 0.000f, 0.000f,
 		 1.0f,  0.0f,  1.0f,
+		 1.000f, 0.000f,
 		 1.0f,  0.0f, -1.0f,
-		-1.0f,  0.0f, -1.0f
+		 1.000f, 1.000f,
+		-1.0f,  0.0f, -1.0f,
+		 0.000f, 1.000f,
 	};
 	public final String name = getClass().getSimpleName();
 	public Pbuffer pbuffer;
 	public List<Primitive> prims = Lists.newArrayList();
-	public int vbo, planeVbo, texture;
+	public int vbo, planeVbo, texture, shadowTexture;
+	private int supersampling;
 	private boolean initialized = false;
+	private static final BufferedImage shadow;
+	static {
+		BufferedImage img = null;
+		try {
+			img = ImageIO.read(ClassLoader.getSystemResource("shadow.png"));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		shadow = img;
+	}
 	protected void addPrimitive(Primitive prim) {
 		prims.add(prim);
 	}
-	public void upload(BufferedImage img) throws LWJGLException {
+	public void setSkin(BufferedImage img) throws LWJGLException {
 		pbuffer.makeCurrent();
+		upload(img, texture);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		checkGLError();
+	}
+	public void upload(BufferedImage img, int tex) {
 		int width = img.getWidth();
 		int height = img.getHeight();
 		Lapitar.log.finer("Uploading "+width+"x"+height+" ("+(width*height)+" pixel) image");
@@ -103,10 +127,8 @@ public abstract class Renderer {
 		IntBuffer buf = BufferUtils.createIntBuffer(width*height);
 		buf.put(argb);
 		buf.flip();
-		glBindTexture(GL_TEXTURE_2D, texture);
+		glBindTexture(GL_TEXTURE_2D, tex);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, buf);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		checkGLError();
 	}
 	protected void preRender(int width, int height) throws LWJGLException {}
@@ -125,11 +147,12 @@ public abstract class Renderer {
 			pbuffer.destroy();
 			pbuffer = null;
 		}
-		vbo = planeVbo = texture = 0;
+		vbo = planeVbo = texture = shadowTexture = 0;
 		prims.clear();
 		initialized = false;
 	}
 	public void init(int supersampling) throws LWJGLException {
+		this.supersampling = supersampling;
 		Lapitar.log.finer("["+name+"] Initializing Pbuffer (assuming "+supersampling+"x supersampling)");
 		if (pbuffer != null) {
 			destroy();
@@ -146,8 +169,15 @@ public abstract class Renderer {
 		planeVbo = ids.get();
 		checkGLError();
 		
-		texture = glGenTextures();
+		IntBuffer textures = BufferUtils.createIntBuffer(2);
+		glGenTextures(textures);
+		texture = textures.get();
+		shadowTexture = textures.get();
 		checkGLError();
+		
+		upload(shadow, shadowTexture);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		
 		FloatBuffer vertexBuffer = BufferUtils.createFloatBuffer(vertices.length);
 		vertexBuffer.put(vertices);
@@ -210,6 +240,12 @@ public abstract class Renderer {
 	}
 	protected abstract void initPrimitives();
 	protected void initGL(float width, float height) throws LWJGLException {
+		if (pbuffer.isBufferLost()) {
+			Lapitar.log.warning("We appear to have lost the Pbuffer. Checking under the couch cushions...");
+			Lapitar.log.info("Nope. Can't find it. Creating a new Pbuffer...");
+			destroy();
+			init(supersampling);
+		}
 		pbuffer.makeCurrent();
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();

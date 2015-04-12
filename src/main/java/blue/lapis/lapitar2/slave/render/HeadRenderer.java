@@ -16,13 +16,11 @@ public class HeadRenderer extends Renderer {
 		shadow.x = 0f;
 		shadow.y = 0.7f;
 		shadow.z = -6.5f;
+		shadow.scaleX = shadow.scaleZ = 2.3f;
 		shadow.rotX = -25;
 		shadow.rotY = 45;
-		shadow.scaleX = shadow.scaleZ = 1.5f;
-		shadow.textured = false;
+		shadow.texture = shadowTexture;
 		shadow.lit = false;
-		shadow.r = shadow.g = shadow.b = 0;
-		shadow.a = 0.5f;
 		addPrimitive(shadow);
 		head = new Cube();
 		head.x = 0;
