@@ -145,6 +145,16 @@ public class RenderThread extends Thread {
 		} else {
 			skin = slim ? parent.alex : parent.steve;
 		}
+		if (skin.getHeight() == 32) {
+				Visage.log.finer("Skin is legacy; painting onto new-style canvas");
+				BufferedImage canvas = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
+				Graphics2D g = canvas.createGraphics();
+				g.drawImage(skin, 0, 0, null);
+				g.drawImage(flipLimb(skin.getSubimage(0, 16, 16, 16)), 16, 48, null);
+				g.drawImage(flipLimb(skin.getSubimage(40, 16, 16, 16)), 32, 48, null);
+				g.dispose();
+				skin = canvas;
+			}
 		Visage.log.finest("Got skin");
 		Visage.log.finest(mode.name());
 		switch (mode) {
@@ -197,6 +207,37 @@ public class RenderThread extends Thread {
 		return png.toByteArray();
 	}
 
+	private BufferedImage flipLimb(BufferedImage in) {
+		BufferedImage out = new BufferedImage(in.getWidth(), in.getHeight(), in.getType());
+		
+		BufferedImage front = flipHorziontally(in.getSubimage(4, 4, 4, 12));
+		BufferedImage back = flipHorziontally(in.getSubimage(12, 4, 4, 12));
+		
+		BufferedImage top = flipHorziontally(in.getSubimage(4, 0, 4, 4));
+		BufferedImage bottom = flipHorziontally(in.getSubimage(8, 0, 4, 4));
+		
+		BufferedImage left = in.getSubimage(8, 4, 4, 12);
+		BufferedImage right = in.getSubimage(0, 4, 4, 12);
+		
+		Graphics2D g = out.createGraphics();
+		g.drawImage(front, 4, 4, null);
+		g.drawImage(back, 12, 4, null);
+		g.drawImage(top, 4, 0, null);
+		g.drawImage(bottom, 8, 0, null);
+		g.drawImage(left, 0, 4, null); // left goes to right
+		g.drawImage(right, 8, 4, null); // right goes to left
+		g.dispose();
+		return out;
+	}
+	
+	private BufferedImage flipHorziontally(BufferedImage in) {
+		BufferedImage out = new BufferedImage(in.getWidth(), in.getHeight(), in.getType());
+		Graphics2D g = out.createGraphics();
+		g.drawImage(in, 0, 0, in.getWidth(), in.getHeight(), in.getWidth(), 0, 0, in.getHeight(), null);
+		g.dispose();
+		return out;
+	}
+	
 	private boolean isSlim(GameProfile profile) throws IOException {
 		if (profile.getProperties().containsKey("textures")) {
 			String texJson = new String(Base64.decode(profile.getProperties().get("textures").getValue().getBytes(StandardCharsets.UTF_8)));
