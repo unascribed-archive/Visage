@@ -18,7 +18,7 @@ public class HeadRenderer extends Renderer {
 		shadow.z = -6.5f;
 		shadow.scaleX = shadow.scaleZ = 2.3f;
 		shadow.rotX = -20;
-		shadow.rotY = 35;
+		shadow.rotY = -35;
 		shadow.texture = TextureType.SHADOW;
 		shadow.lit = false;
 		addPrimitive(shadow);
@@ -27,7 +27,7 @@ public class HeadRenderer extends Renderer {
 		head.y = -0.275f;
 		head.z = -5.025f;
 		head.rotX = -20;
-		head.rotY = 35;
+		head.rotY = -35;
 		head.texture = TextureType.HEAD;
 		addPrimitive(head);
 		helm = new Cube();
@@ -36,7 +36,7 @@ public class HeadRenderer extends Renderer {
 		helm.y = -0.25f;
 		helm.z = -5f;
 		helm.rotX = -20;
-		helm.rotY = 35;
+		helm.rotY = -35;
 		helm.texture = TextureType.HEAD2;
 		addPrimitive(helm);
 	}

@@ -71,6 +71,10 @@ public abstract class Renderer {
 	public Pbuffer pbuffer;
 	public List<Primitive> prims = Lists.newArrayList();
 	public int vbo, planeVbo, texture, shadowTexture;
+	
+	public FloatBuffer lightAmbient;
+	public FloatBuffer lightPosition;
+	
 	private int supersampling;
 	private boolean initialized = false;
 	private static final BufferedImage shadow;
@@ -185,23 +189,20 @@ public abstract class Renderer {
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		checkGLError();
 		
-		FloatBuffer lightAmbient = BufferUtils.createFloatBuffer(4);
+		lightAmbient = BufferUtils.createFloatBuffer(4);
 		lightAmbient.put(1f);
 		lightAmbient.put(0.9f);
 		lightAmbient.put(0.6f);
-		lightAmbient.put(1f);
+		lightAmbient.put(0.5f);
 		lightAmbient.flip();
 		glLight(GL_LIGHT0, GL_AMBIENT, lightAmbient);
-		checkGLError();
 		
-		FloatBuffer lightPosition = BufferUtils.createFloatBuffer(4);
+		lightPosition = BufferUtils.createFloatBuffer(4);
 		lightPosition.put(3f);
 		lightPosition.put(-2f);
-		lightPosition.put(1f);
-		lightPosition.put(1f);
+		lightPosition.put(5f);
+		lightPosition.put(1.0f);
 		lightPosition.flip();
-		glLight(GL_LIGHT0, GL_POSITION, lightPosition);
-		checkGLError();
 		
 		glEnable(GL_LIGHTING);
 		glEnable(GL_LIGHT0);

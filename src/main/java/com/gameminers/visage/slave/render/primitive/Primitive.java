@@ -32,6 +32,8 @@ public abstract class Primitive {
 			if (lit) {
 				Visage.log.finest("Enabling lighting");
 				glEnable(GL_LIGHTING);
+				renderer.lightPosition.position(0);
+				glLight(GL_LIGHT0, GL_POSITION, renderer.lightPosition);
 			} else {
 				Visage.log.finest("Disabling lighting");
 				glDisable(GL_LIGHTING);
