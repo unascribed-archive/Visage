@@ -14,7 +14,7 @@ welcome. I'm just not using the Lapis name anymore.
 
 ## Benchmarking
 Visage includes an extremely simple benchmark that renders as many skins as possible in 5 seconds and reports
-how many skins it was able to render. You can invoke it by running `java -jar Visage2.jar --benchmark`.
+how many skins it was able to render. You can invoke it by running `java -jar Visage.jar --benchmark`.
 
 ## Setup
 
@@ -35,7 +35,8 @@ you can guess, this fallback is slow and undesirable, but helps ensure high upti
 Edit the `conf/master.conf` file. It is self-documenting.
 
 #### Running
-Run `java -jar Visage.jar --master`. It will pick up the `master.conf` in the current directory and use it.
+Run `java -jar Visage.jar --master`. It will pick up the `master.conf` in the `conf` directory and use it.  
+If you need to use a different config file, use the `--config` option.
 
 ### Slave
 Visage systems can optionally have a (theoretically) infinite number of slaves. A good example of a slave is a computer
@@ -45,4 +46,5 @@ that has a GPU, but is on an unreliable Internet connection. Slaves can be run w
 Edit the `conf/slave.conf` file. It is self-documenting.
 
 #### Running
-Run `java -jar Visage.jar`. Slave mode is the default. It will pick up the `slave.conf` in the current directory and use it.
+Run `java -jar Visage.jar`. Slave mode is the default. It will pick up the `slave.conf` in the `conf` directory and use it.  
+If you need to use a different config file, use the `--config` option.
