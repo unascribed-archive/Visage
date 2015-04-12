@@ -28,58 +28,34 @@ public abstract class Renderer {
 	public static final float[] vertices = {
 		// Front
 		-1.0f, -1.0f,  1.0f,
-		 0.000f, 0.000f,
 		 1.0f, -1.0f,  1.0f,
-		 1.000f, 0.000f,
 		 1.0f,  1.0f,  1.0f,
-		 1.000f, 1.000f,
 		-1.0f,  1.0f,  1.0f,
-		 0.000f, 1.000f,
 		// Back
 		-1.0f, -1.0f, -1.0f,
-		 0.000f, 0.000f,
 		 1.0f, -1.0f, -1.0f,
-		 1.000f, 0.000f,
 		 1.0f,  1.0f, -1.0f,
-		 1.000f, 1.000f,
 		-1.0f,  1.0f, -1.0f,
-		 0.000f, 1.000f,
 		// Top
 		-1.0f,  1.0f,  1.0f,
-		 0.000f, 0.000f,
 		 1.0f,  1.0f,  1.0f,
-		 1.000f, 0.000f,
 		 1.0f,  1.0f, -1.0f,
-		 1.000f, 1.000f,
 		-1.0f,  1.0f, -1.0f,
-		 0.000f, 1.000f,
 		// Bottom
 		-1.0f, -1.0f, -1.0f,
-		 0.000f, 0.000f,
 		 1.0f, -1.0f, -1.0f,
-		 1.000f, 0.000f,
 		 1.0f, -1.0f,  1.0f,
-		 1.000f, 1.000f,
 		-1.0f, -1.0f,  1.0f,
-		 0.000f, 1.000f,
 		// Left
 		 1.0f, -1.0f,  1.0f,
-		 0.000f, 0.000f,
 		 1.0f, -1.0f, -1.0f,
-		 1.000f, 0.000f,
 		 1.0f,  1.0f, -1.0f,
-		 1.000f, 1.000f,
 		 1.0f,  1.0f,  1.0f,
-		 0.000f, 1.000f,
 		// Right
 		-1.0f, -1.0f, -1.0f,
-		 0.000f, 0.000f,
 		-1.0f, -1.0f,  1.0f,
-		 1.000f, 0.000f,
 		-1.0f,  1.0f,  1.0f,
-		 1.000f, 1.000f,
-		-1.0f,  1.0f, -1.0f,
-		 0.000f, 1.000f,
+		-1.0f,  1.0f, -1.0f
 	};
 	public static final float[] planeVertices = {
 		-1.0f,  0.0f,  1.0f,
@@ -197,7 +173,8 @@ public abstract class Renderer {
 		checkGLError();
 		
 		glShadeModel(GL_SMOOTH);
-		glCullFace(GL_BACK);
+		glCullFace(GL_FRONT);
+		glFrontFace(GL_CCW);
 		checkGLError();
 		
 		glEnable(GL_DEPTH_TEST);
