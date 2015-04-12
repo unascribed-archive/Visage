@@ -112,7 +112,7 @@ public class RenderThread extends Thread {
 		int height = data.readUnsignedShort();
 		int supersampling = data.readUnsignedByte();
 		GameProfile profile = readGameProfile(data);
-		Lapitar.log.finer("Rendering a "+width+"x"+height+" "+mode.name().toLowerCase()+" ("+supersampling+"x supersampling) for "+profile.getName());
+		Lapitar.log.finer("Rendering a "+width+"x"+height+" "+mode.name().toLowerCase()+" ("+supersampling+"x supersampling) for "+(profile == null ? "null" : profile.getName()));
 		byte[] pngBys = draw(mode, width, height, supersampling, profile);
 		Lapitar.log.finest("Got png bytes");
 		parent.channel.basicPublish("", props.getReplyTo(), replyProps, buildResponse(0, pngBys));
@@ -171,7 +171,7 @@ public class RenderThread extends Thread {
 				}
 				try {
 					Lapitar.log.finest("Uploading");
-					renderer.upload(skin);
+					renderer.setSkin(skin);
 					Lapitar.log.finest("Rendering");
 					renderer.render(width, height);
 					Lapitar.log.finest("Rendered - reading pixels");
@@ -198,21 +198,26 @@ public class RenderThread extends Thread {
 	}
 
 	private boolean isSlim(GameProfile profile) throws IOException {
-		String texJson = new String(Base64.decode(profile.getProperties().get("textures").getValue().getBytes(StandardCharsets.UTF_8)));
-		JsonObject obj = parent.gson.fromJson(texJson, JsonObject.class);
-		JsonObject tex = obj.getAsJsonObject("textures");
-		if (tex.has("SKIN")) {
-			JsonObject skin = tex.getAsJsonObject("SKIN");
-			if (skin.has("metadata")) {
-				if ("slim".equals(skin.getAsJsonObject("metadata").get("model").getAsString()))
-					return true;
+		if (profile.getProperties().containsKey("textures")) {
+			String texJson = new String(Base64.decode(profile.getProperties().get("textures").getValue().getBytes(StandardCharsets.UTF_8)));
+			JsonObject obj = parent.gson.fromJson(texJson, JsonObject.class);
+			JsonObject tex = obj.getAsJsonObject("textures");
+			if (tex.has("SKIN")) {
+				JsonObject skin = tex.getAsJsonObject("SKIN");
+				if (skin.has("metadata")) {
+					if ("slim".equals(skin.getAsJsonObject("metadata").get("model").getAsString()))
+						return true;
+				}
+				return false;
 			}
-			return false;
 		}
 		return UUIDs.isAlex(profile.getId());
 	}
 
 	private GameProfile readGameProfile(DataInputStream data) throws IOException {
+		boolean present = data.readBoolean();
+		if (!present)
+			return new GameProfile(new UUID(0, 0), "<unknown>");
 		UUID uuid = new UUID(data.readLong(), data.readLong());
 		String name = data.readUTF();
 		GameProfile profile = new GameProfile(uuid, name);

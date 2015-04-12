@@ -185,7 +185,7 @@ public class LapitarMaster extends Thread {
 			dos.flush();
 			defos.finish();
 			channel.basicPublish("", config.getString("rabbitmq.queue"), props, baos.toByteArray());
-			Lapitar.log.finer("Requested a "+width+"x"+height+" "+mode.name().toLowerCase()+" render ("+supersampling+"x supersampling) for "+profile.getName());
+			Lapitar.log.finer("Requested a "+width+"x"+height+" "+mode.name().toLowerCase()+" render ("+supersampling+"x supersampling) for "+(profile == null ? "null" : profile.getName()));
 			final Object waiter = new Object();
 			queuedJobs.put(corrId, new Runnable() {
 				@Override
@@ -239,6 +239,11 @@ public class LapitarMaster extends Thread {
 	}
 	
 	private void writeGameProfile(DataOutputStream data, GameProfile profile) throws IOException {
+		if (profile == null) {
+			data.writeBoolean(false);
+			return;
+		}
+		data.writeBoolean(true);
 		data.writeLong(profile.getId().getMostSignificantBits());
 		data.writeLong(profile.getId().getLeastSignificantBits());
 		data.writeUTF(profile.getName());
