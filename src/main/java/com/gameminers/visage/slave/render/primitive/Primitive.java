@@ -2,7 +2,6 @@ package com.gameminers.visage.slave.render.primitive;
 
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.ARBVertexBufferObject.*;
-
 import org.lwjgl.opengl.Util;
 
 import com.gameminers.visage.Visage;
@@ -17,6 +16,7 @@ public abstract class Primitive {
 	public boolean lit = true;
 	public boolean textured = true;
 	public TextureType texture = TextureType.NONE;
+	protected boolean inStage = true;
 	public abstract void render(Renderer renderer);
 	protected void doRender(Renderer renderer, int vbo, int tcbo, float[] vertices) {
 		glPushMatrix();
@@ -29,12 +29,12 @@ public abstract class Primitive {
 			glRotatef(rotZ, 0.0f, 0.0f, 1.0f);
 			Visage.log.finest("Scaling by "+scaleX+"x, "+scaleY+"x, "+scaleZ+"x");
 			glScalef(scaleX, scaleY*-1, scaleZ);
-			if (lit) {
+			if (!inStage && lit) {
 				Visage.log.finest("Enabling lighting");
 				glEnable(GL_LIGHTING);
 				renderer.lightPosition.position(0);
 				glLight(GL_LIGHT0, GL_POSITION, renderer.lightPosition);
-			} else {
+			} else if (!inStage) {
 				Visage.log.finest("Disabling lighting");
 				glDisable(GL_LIGHTING);
 			}
@@ -49,10 +49,9 @@ public abstract class Primitive {
 			Util.checkGLError();
 			
 			Visage.log.finest("Setting VBO");
-    		Util.checkGLError();
-    		
     		glEnableClientState(GL_VERTEX_ARRAY);
     		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    		glEnableClientState(GL_NORMAL_ARRAY);
     		if (tcbo == Integer.MAX_VALUE) {
         		glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo);
     			glTexCoordPointer(2, GL_FLOAT, 20, 12);
@@ -61,7 +60,8 @@ public abstract class Primitive {
     			glBindBufferARB(GL_ARRAY_BUFFER_ARB, tcbo);
     			glTexCoordPointer(2, GL_FLOAT, 0, 0);
     			glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo);
-    			glVertexPointer(3, GL_FLOAT, 0, 0);
+    			glVertexPointer(3, GL_FLOAT, 24, 0);
+    			glNormalPointer(GL_FLOAT, 24, 12);
     		}
 		    Util.checkGLError();
 		    
@@ -69,20 +69,21 @@ public abstract class Primitive {
 		    if (tcbo == Integer.MAX_VALUE) {
 		    	glDrawArrays(GL_QUADS, 0, vertices.length/5);
 		    } else {
-		    	glDrawArrays(GL_QUADS, 0, vertices.length/3);
+		    	glDrawArrays(GL_QUADS, 0, vertices.length/6);
 		    }
 			Util.checkGLError();
 			
 			/*glBegin(GL_QUADS);
-			for (int i = 0; i < vertices.length/5; i++) {
-				int idx = i*5;
+			for (int i = 0; i < vertices.length/3; i++) {
+				int idx = i*3;
 				float x = vertices[idx];
 				float y = vertices[idx+1];
 				float z = vertices[idx+2];
-				float u = vertices[idx+3];
-				float v = vertices[idx+4];
+				float u = texture.u[i];
+				float v = texture.v[i];
 				Visage.log.finest("Vertex "+x+", "+y+", "+z);
 				Visage.log.finest("Texcoord "+u+", "+v);
+				glNormal3f(-0.2f, 0, -1);
 				glTexCoord2f(u, v);
 				glVertex3f(x, y, z);
 			}

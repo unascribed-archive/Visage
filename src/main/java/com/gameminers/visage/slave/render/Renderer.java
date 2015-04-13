@@ -25,37 +25,64 @@ import static org.lwjgl.opengl.Util.checkGLError;
 import static org.lwjgl.util.glu.GLU.gluPerspective;
 
 public abstract class Renderer {
+	public static final float normalX = -0.2f;
+	public static final float normalY = 0;
+	public static final float normalZ = -1;
 	public static final float[] vertices = {
 		// Front
 		-1.0f, -1.0f,  1.0f,
+		normalX, normalY, normalZ,
 		 1.0f, -1.0f,  1.0f,
+		normalX, normalY, normalZ,
 		 1.0f,  1.0f,  1.0f,
+		normalX, normalY, normalZ,
 		-1.0f,  1.0f,  1.0f,
+		normalX, normalY, normalZ,
 		// Back
 		-1.0f, -1.0f, -1.0f,
+		normalX, normalY, normalZ,
 		 1.0f, -1.0f, -1.0f,
+		normalX, normalY, normalZ,
 		 1.0f,  1.0f, -1.0f,
+		normalX, normalY, normalZ,
 		-1.0f,  1.0f, -1.0f,
+		normalX, normalY, normalZ,
 		// Top
 		-1.0f,  1.0f,  1.0f,
+		normalX, normalY, normalZ,
 		 1.0f,  1.0f,  1.0f,
+		normalX, normalY, normalZ,
 		 1.0f,  1.0f, -1.0f,
+		normalX, normalY, normalZ,
 		-1.0f,  1.0f, -1.0f,
+		normalX, normalY, normalZ,
 		// Bottom
 		-1.0f, -1.0f, -1.0f,
+		normalX, normalY, normalZ,
 		 1.0f, -1.0f, -1.0f,
+		normalX, normalY, normalZ,
 		 1.0f, -1.0f,  1.0f,
+		normalX, normalY, normalZ,
 		-1.0f, -1.0f,  1.0f,
+		normalX, normalY, normalZ,
 		// Left
 		 1.0f, -1.0f,  1.0f,
+		normalX, normalY, normalZ,
 		 1.0f, -1.0f, -1.0f,
+		normalX, normalY, normalZ,
 		 1.0f,  1.0f, -1.0f,
+		normalX, normalY, normalZ,
 		 1.0f,  1.0f,  1.0f,
+		normalX, normalY, normalZ,
 		// Right
 		-1.0f, -1.0f, -1.0f,
+		normalX, normalY, normalZ,
 		-1.0f, -1.0f,  1.0f,
+		normalX, normalY, normalZ,
 		-1.0f,  1.0f,  1.0f,
-		-1.0f,  1.0f, -1.0f
+		normalX, normalY, normalZ,
+		-1.0f,  1.0f, -1.0f,
+		normalX, normalY, normalZ,
 	};
 	public static final float[] planeVertices = {
 		-1.0f,  0.0f,  1.0f,
@@ -72,7 +99,7 @@ public abstract class Renderer {
 	public List<Primitive> prims = Lists.newArrayList();
 	public int vbo, planeVbo, texture, shadowTexture;
 	
-	public FloatBuffer lightAmbient;
+	public FloatBuffer lightColor;
 	public FloatBuffer lightPosition;
 	
 	private int supersampling;
@@ -189,19 +216,19 @@ public abstract class Renderer {
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		checkGLError();
 		
-		lightAmbient = BufferUtils.createFloatBuffer(4);
-		lightAmbient.put(1f);
-		lightAmbient.put(0.9f);
-		lightAmbient.put(0.6f);
-		lightAmbient.put(0.5f);
-		lightAmbient.flip();
-		glLight(GL_LIGHT0, GL_AMBIENT, lightAmbient);
+		lightColor = BufferUtils.createFloatBuffer(4);
+		lightColor.put(1f);
+		lightColor.put(0.9f);
+		lightColor.put(0.6f);
+		lightColor.put(1.0f);
+		lightColor.flip();
+		glLight(GL_LIGHT0, GL_AMBIENT, lightColor);
 		
 		lightPosition = BufferUtils.createFloatBuffer(4);
-		lightPosition.put(3f);
+		lightPosition.put(-4f);
 		lightPosition.put(-2f);
-		lightPosition.put(5f);
-		lightPosition.put(1.0f);
+		lightPosition.put(1f);
+		lightPosition.put(1000f);
 		lightPosition.flip();
 		
 		glEnable(GL_LIGHTING);
@@ -234,7 +261,8 @@ public abstract class Renderer {
 		glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
 		glMatrixMode(GL_MODELVIEW);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		
+
+		prims.clear();
 		initPrimitives(); // TODO remove, this method should only be called during first init
 	}
 	public void finish() throws LWJGLException {

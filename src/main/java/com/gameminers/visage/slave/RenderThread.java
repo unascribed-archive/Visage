@@ -146,15 +146,15 @@ public class RenderThread extends Thread {
 			skin = slim ? parent.alex : parent.steve;
 		}
 		if (skin.getHeight() == 32) {
-				Visage.log.finer("Skin is legacy; painting onto new-style canvas");
-				BufferedImage canvas = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
-				Graphics2D g = canvas.createGraphics();
-				g.drawImage(skin, 0, 0, null);
-				g.drawImage(flipLimb(skin.getSubimage(0, 16, 16, 16)), 16, 48, null);
-				g.drawImage(flipLimb(skin.getSubimage(40, 16, 16, 16)), 32, 48, null);
-				g.dispose();
-				skin = canvas;
-			}
+			Visage.log.finer("Skin is legacy; painting onto new-style canvas");
+			BufferedImage canvas = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
+			Graphics2D g = canvas.createGraphics();
+			g.drawImage(skin, 0, 0, null);
+			g.drawImage(flipLimb(skin.getSubimage(0, 16, 16, 16)), 16, 48, null);
+			g.drawImage(flipLimb(skin.getSubimage(40, 16, 16, 16)), 32, 48, null);
+			g.dispose();
+			skin = canvas;
+		}
 		Visage.log.finest("Got skin");
 		Visage.log.finest(mode.name());
 		switch (mode) {
