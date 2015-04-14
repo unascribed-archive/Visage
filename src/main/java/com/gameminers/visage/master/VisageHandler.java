@@ -46,7 +46,13 @@ public class VisageHandler extends AbstractHandler {
 			}
 			RenderResponse resp;
 			try {
-				resp = master.renderRpc(RenderMode.valueOf(request.getQueryString() == null ? "HEAD" : request.getQueryString()), 2048, 2048, 4, profile);
+				int width = 2048;
+				int height = width;
+				RenderMode mode = RenderMode.valueOf(request.getQueryString() == null ? "HEAD" : request.getQueryString());
+				if (mode == RenderMode.PLAYER) {
+					width = (int)Math.ceil(width * (1/1.6f));
+				}
+				resp = master.renderRpc(mode, width, height, 4, profile);
 			} catch (RenderFailedException e) {
 				Visage.log.log(Level.WARNING, "An error occurred while rendering a request", e);
 				response.setContentType("text/plain");

@@ -253,6 +253,7 @@ public abstract class Renderer {
 		pbuffer.makeCurrent();
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
+		glViewport(0, 0, (int)width, (int)height);
 		gluPerspective(
 				45.0f,
 				width / height,
