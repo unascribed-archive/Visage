@@ -21,8 +21,8 @@ public class PlayerRenderer extends Renderer {
 		
 		Plane shadow = new Plane();
 		shadow.y = 7f;
-		shadow.scaleX = 1.95f;
-		shadow.scaleZ = 1.1f;
+		shadow.scaleX = 1.85f;
+		shadow.scaleZ = 0.85f;
 		shadow.texture = TextureType.SHADOW;
 		shadow.lit = false;
 		stage.members.add(shadow);
