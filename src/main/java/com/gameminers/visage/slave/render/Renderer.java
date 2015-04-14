@@ -262,7 +262,8 @@ public abstract class Renderer {
 		glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
 		glMatrixMode(GL_MODELVIEW);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+		glEnable(GL_CULL_FACE);
+		
 		prims.clear();
 		initPrimitives(); // TODO remove, this method should only be called during first init
 	}

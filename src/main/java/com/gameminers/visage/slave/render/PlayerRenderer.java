@@ -1,6 +1,7 @@
 package com.gameminers.visage.slave.render;
 
 import com.gameminers.visage.slave.render.primitive.Cube;
+import com.gameminers.visage.slave.render.primitive.Plane;
 import com.gameminers.visage.slave.render.primitive.Stage;
 
 public class PlayerRenderer extends Renderer {
@@ -17,6 +18,14 @@ public class PlayerRenderer extends Renderer {
 		stage.rotX = tilt;
 		stage.rotY = angle;
 		addPrimitive(stage);
+		
+		Plane shadow = new Plane();
+		shadow.y = 7f;
+		shadow.scaleX = 1.95f;
+		shadow.scaleZ = 1.1f;
+		shadow.texture = TextureType.SHADOW;
+		shadow.lit = false;
+		stage.members.add(shadow);
 		
 		Cube larm = new Cube();
 		larm.x = 1.75f;
