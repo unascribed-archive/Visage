@@ -13,8 +13,8 @@ public class PlayerRenderer extends Renderer {
 		
 		Stage stage = new Stage();
 		stage.x = 0;
-		stage.y = -2.75f;
-		stage.z = -10.2f;
+		stage.y = -2.8f;
+		stage.z = -10.35f;
 		stage.rotX = tilt;
 		stage.rotY = angle;
 		addPrimitive(stage);
