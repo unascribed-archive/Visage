@@ -2,6 +2,7 @@ package com.gameminers.visage.slave.render.primitive;
 
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.ARBVertexBufferObject.*;
+
 import org.lwjgl.opengl.Util;
 
 import com.gameminers.visage.Visage;
@@ -51,12 +52,12 @@ public abstract class Primitive {
 			Visage.log.finest("Setting VBO");
     		glEnableClientState(GL_VERTEX_ARRAY);
     		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-    		glEnableClientState(GL_NORMAL_ARRAY);
     		if (tcbo == Integer.MAX_VALUE) {
         		glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo);
     			glTexCoordPointer(2, GL_FLOAT, 20, 12);
     			glVertexPointer(3, GL_FLOAT, 20, 0);
     		} else {
+    			glEnableClientState(GL_NORMAL_ARRAY);
     			glBindBufferARB(GL_ARRAY_BUFFER_ARB, tcbo);
     			glTexCoordPointer(2, GL_FLOAT, 0, 0);
     			glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo);
