@@ -43,6 +43,8 @@ dependencies {
 	compile 'com.google.code.gson:gson:2.2.4'
 	compile 'org.fusesource.jansi:jansi:1.11'
 	compile 'org.spacehq:mcauthlib:1.0'
+	compile 'org.apache.commons:commons-jcs:2.0-beta-1'
+	compile 'com.h2database:h2:1.4.187'
 }
 
 // Read source files using UTF-8
