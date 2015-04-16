@@ -76,8 +76,18 @@ public class VisageMaster extends Thread {
 	public void run() {
 		try {
 			Log.setLog(new LogShim(Visage.log));
+			long total = Runtime.getRuntime().totalMemory();
+			long max = Runtime.getRuntime().maxMemory();
+			Visage.log.finer("Current heap size: "+humanReadableByteCount(total, false));
+			Visage.log.finer("Max heap size: "+humanReadableByteCount(max, false));
+			if (total < max) {
+				Visage.log.warning("You have set your minimum heap size (Xms) lower than the maximum heap size (Xmx) - this can cause GC thrashing. It is strongly recommended to set them both to the same value.");
+			}
+			if (max < (1024*1024*1024)) {
+				Visage.log.warning("The heap size (Xmx) is less than one gigabyte; it is recommended to run Visage with a gigabyte or more. Use -Xms1G and -Xmx1G to do this.");
+			}
 			Visage.log.info("Setting up Jetty");
-			Server server = new Server(new InetSocketAddress(config.getString("jetty.bind"), config.getInt("jetty.port")));
+			Server server = new Server(new InetSocketAddress(config.getString("http.bind"), config.getInt("http.port")));
 			
 			List<String> expose = config.getStringList("expose");
 			String poweredBy;
@@ -92,7 +102,7 @@ public class VisageMaster extends Thread {
 			}
 			
 			ResourceHandler resource = new ResourceHandler();
-			resource.setResourceBase(config.getString("jetty.static"));
+			resource.setResourceBase(config.getString("http.static"));
 			resource.setDirectoriesListed(false);
 			resource.setWelcomeFiles(new String[] {"index.html"});
 			resource.setHandler(new VisageHandler(this));
@@ -260,6 +270,18 @@ public class VisageMaster extends Thread {
 			}
 			data.writeUTF(en.getKey());
 		}
+	}
+	
+	/**
+	 * <a href="http://stackoverflow.com/questions/3758606/how-to-convert-byte-size-into-human-readable-format-in-java">Source</a>
+	 * @author aioobe
+	 */
+	public static String humanReadableByteCount(long bytes, boolean si) {
+	    int unit = si ? 1000 : 1024;
+	    if (bytes < unit) return bytes + " B";
+	    int exp = (int) (Math.log(bytes) / Math.log(unit));
+	    String pre = (si ? "kMGTPE" : "KMGTPE").charAt(exp-1) + (si ? "" : "i");
+	    return String.format("%.1f %sB", bytes / Math.pow(unit, exp), pre);
 	}
 
 }
