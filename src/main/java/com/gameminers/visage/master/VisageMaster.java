@@ -83,7 +83,7 @@ public class VisageMaster extends Thread {
 			if (total < max) {
 				Visage.log.warning("You have set your minimum heap size (Xms) lower than the maximum heap size (Xmx) - this can cause GC thrashing. It is strongly recommended to set them both to the same value.");
 			}
-			if (max < (1024*1024*1024)) {
+			if (max < (1000*1000*1000)) {
 				Visage.log.warning("The heap size (Xmx) is less than one gigabyte; it is recommended to run Visage with a gigabyte or more. Use -Xms1G and -Xmx1G to do this.");
 			}
 			Visage.log.info("Setting up Jetty");
