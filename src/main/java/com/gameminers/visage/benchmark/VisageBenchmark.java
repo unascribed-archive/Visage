@@ -10,13 +10,17 @@ import com.gameminers.visage.Visage;
 import com.gameminers.visage.slave.render.PlayerRenderer;
 import com.gameminers.visage.slave.render.Renderer;
 
-public class VisageBenchmark {
+public class VisageBenchmark extends Thread {
 	private static final long TARGET = 5000000000L;
 	private int num = 1;
 	private NumberFormat format = NumberFormat.getInstance();
 	private int totalTotal = 0;
 	private BufferedImage skin;
-	public void start() {
+	public VisageBenchmark() {
+		super("Benchmark thread");
+	}
+	@Override
+	public void run() {
 		Renderer renderer = new PlayerRenderer();
 		try {
 			Visage.log.warning("VISAGE IS NOT AN ACCURATE HARDWARE BENCHMARK. This benchmark is to give you an idea of how well this machine would work as a Visage slave.");

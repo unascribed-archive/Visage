@@ -52,9 +52,6 @@ public class Visage {
 		fileSwitch = parser.acceptsAll(Arrays.asList("config", "c"), "Load the given config file instead of the default conf/[mode].conf").withRequiredArg().ofType(File.class);
 		OptionSet set = parser.parse(args);
 		File confFile = fileSwitch.value(set);
-		if (debug || trace) {
-			log.warning("You have debug and/or trace logging enabled. This will severely impact performance.");
-		}
 		if (set.has("master")) {
 			if (confFile == null) {
 				confFile = new File("conf/master.conf");
@@ -75,6 +72,9 @@ public class Visage {
 			ansi = conf.getBoolean("ansi");
 			log.info("Starting Visage v"+VERSION+" as a slave");
 			new VisageSlave(conf).start();
+		}
+		if (debug || trace) {
+			log.warning("You have debug and/or trace logging enabled. This will severely impact performance.");
 		}
 	}
 }
