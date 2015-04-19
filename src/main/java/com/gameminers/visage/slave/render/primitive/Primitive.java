@@ -21,35 +21,35 @@ public abstract class Primitive {
 	public abstract void render(Renderer renderer);
 	protected void doRender(Renderer renderer, int vbo, int tcbo, float[] vertices) {
 		glPushMatrix();
-			Visage.log.finest("Rendering "+getClass().getSimpleName());
-			Visage.log.finest("Translating to "+x+", "+y+", "+z);
+			if (Visage.trace) Visage.log.finest("Rendering "+getClass().getSimpleName());
+			if (Visage.trace) Visage.log.finest("Translating to "+x+", "+y+", "+z);
 			glTranslatef(x, y, z);
-			Visage.log.finest("Rotating by "+rotX+"°, "+rotY+"°, "+rotZ+"°");
+			if (Visage.trace) Visage.log.finest("Rotating by "+rotX+"°, "+rotY+"°, "+rotZ+"°");
 			glRotatef(rotX, 1.0f, 0.0f, 0.0f);
 			glRotatef(rotY, 0.0f, 1.0f, 0.0f);
 			glRotatef(rotZ, 0.0f, 0.0f, 1.0f);
-			Visage.log.finest("Scaling by "+scaleX+"x, "+scaleY+"x, "+scaleZ+"x");
+			if (Visage.trace) Visage.log.finest("Scaling by "+scaleX+"x, "+scaleY+"x, "+scaleZ+"x");
 			glScalef(scaleX, scaleY*-1, scaleZ);
 			if (!inStage && lit) {
-				Visage.log.finest("Enabling lighting");
+				if (Visage.trace) Visage.log.finest("Enabling lighting");
 				glEnable(GL_LIGHTING);
 				renderer.lightPosition.position(0);
 				glLight(GL_LIGHT0, GL_POSITION, renderer.lightPosition);
 			} else if (!inStage) {
-				Visage.log.finest("Disabling lighting");
+				if (Visage.trace) Visage.log.finest("Disabling lighting");
 				glDisable(GL_LIGHTING);
 			}
 			if (textured) {
-				Visage.log.finest("Enabling texturing - texture "+texture);
+				if (Visage.trace) Visage.log.finest("Enabling texturing - texture "+texture);
 				glEnable(GL_TEXTURE_2D);
 				glBindTexture(GL_TEXTURE_2D, texture == TextureType.SHADOW ? renderer.shadowTexture : renderer.texture);
 			} else {
-				Visage.log.finest("Disabling texturing");
+				if (Visage.trace) Visage.log.finest("Disabling texturing");
 				glDisable(GL_TEXTURE_2D);
 			}
 			Util.checkGLError();
 			
-			Visage.log.finest("Setting VBO");
+			if (Visage.trace) Visage.log.finest("Setting VBO");
     		glEnableClientState(GL_VERTEX_ARRAY);
     		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
     		if (tcbo == Integer.MAX_VALUE) {
@@ -66,7 +66,7 @@ public abstract class Primitive {
     		}
 		    Util.checkGLError();
 		    
-		    Visage.log.finest("Rendering");
+		    if (Visage.trace) Visage.log.finest("Rendering");
 		    if (tcbo == Integer.MAX_VALUE) {
 		    	glDrawArrays(GL_QUADS, 0, vertices.length/5);
 		    } else {
@@ -82,8 +82,8 @@ public abstract class Primitive {
 				float z = vertices[idx+2];
 				float u = texture.u[i];
 				float v = texture.v[i];
-				Visage.log.finest("Vertex "+x+", "+y+", "+z);
-				Visage.log.finest("Texcoord "+u+", "+v);
+				if (Visage.trace) Visage.log.finest("Vertex "+x+", "+y+", "+z);
+				if (Visage.trace) Visage.log.finest("Texcoord "+u+", "+v);
 				glNormal3f(-0.2f, 0, -1);
 				glTexCoord2f(u, v);
 				glVertex3f(x, y, z);

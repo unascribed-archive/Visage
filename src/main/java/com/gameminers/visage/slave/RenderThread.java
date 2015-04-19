@@ -107,29 +107,29 @@ public class RenderThread extends Thread {
 		int height = data.readUnsignedShort();
 		int supersampling = data.readUnsignedByte();
 		GameProfile profile = readGameProfile(data);
-		Visage.log.finer("Rendering a "+width+"x"+height+" "+mode.name().toLowerCase()+" ("+supersampling+"x supersampling) for "+(profile == null ? "null" : profile.getName()));
+		if (Visage.debug) Visage.log.finer("Rendering a "+width+"x"+height+" "+mode.name().toLowerCase()+" ("+supersampling+"x supersampling) for "+(profile == null ? "null" : profile.getName()));
 		byte[] pngBys = draw(mode, width, height, supersampling, profile);
-		Visage.log.finest("Got png bytes");
+		if (Visage.trace) Visage.log.finest("Got png bytes");
 		parent.channel.basicPublish("", props.getReplyTo(), replyProps, buildResponse(0, pngBys));
-		Visage.log.finest("Published response");
+		if (Visage.trace) Visage.log.finest("Published response");
 		parent.channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
-		Visage.log.finest("Ack'd message");
+		if (Visage.trace) Visage.log.finest("Ack'd message");
 	}
 
 	private byte[] buildResponse(int type, byte[] payload) throws IOException {
-		Visage.log.finest("Building response of type "+type);
+		if (Visage.trace) Visage.log.finest("Building response of type "+type);
 		ByteArrayOutputStream result = new ByteArrayOutputStream();
 		new DataOutputStream(result).writeUTF(parent.name);
 		result.write(type);
 		result.write(payload);
 		byte[] resp = result.toByteArray();
-		Visage.log.finest("Built - "+resp.length+" bytes long");
+		if (Visage.trace) Visage.log.finest("Built - "+resp.length+" bytes long");
 		return resp;
 	}
 
 	public byte[] draw(RenderMode mode, int width, int height, int supersampling, GameProfile profile) throws Exception {
 		png.reset();
-		Visage.log.finest("Reset png");
+		if (Visage.trace) Visage.log.finest("Reset png");
 		Map<ProfileTextureType, ProfileTexture> tex = parent.session.getTextures(profile, false);
 		boolean slim = isSlim(profile);
 		BufferedImage skin;
@@ -141,7 +141,7 @@ public class RenderThread extends Thread {
 			skin = slim ? parent.alex : parent.steve;
 		}
 		if (skin.getHeight() == 32) {
-			Visage.log.finer("Skin is legacy; painting onto new-style canvas");
+			if (Visage.debug) Visage.log.finer("Skin is legacy; painting onto new-style canvas");
 			BufferedImage canvas = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
 			Graphics2D g = canvas.createGraphics();
 			g.drawImage(skin, 0, 0, null);
@@ -150,8 +150,8 @@ public class RenderThread extends Thread {
 			g.dispose();
 			skin = canvas;
 		}
-		Visage.log.finest("Got skin");
-		Visage.log.finest(mode.name());
+		if (Visage.trace) Visage.log.finest("Got skin");
+		if (Visage.trace) Visage.log.finest(mode.name());
 		switch (mode) {
 			case FACE:
 				width /= supersampling;
@@ -171,26 +171,26 @@ public class RenderThread extends Thread {
 			default: {
 				Renderer renderer = renderers[mode.ordinal()];
 				if (!renderer.isInitialized()) {
-					Visage.log.finest("Initialized renderer");
+					if (Visage.trace) Visage.log.finest("Initialized renderer");
 					renderer.init(supersampling);
 				}
 				try {
-					Visage.log.finest("Uploading");
+					if (Visage.trace) Visage.log.finest("Uploading");
 					renderer.setSkin(skin);
-					Visage.log.finest("Rendering");
+					if (Visage.trace) Visage.log.finest("Rendering");
 					renderer.render(width, height);
-					Visage.log.finest("Rendered - reading pixels");
+					if (Visage.trace) Visage.log.finest("Rendered - reading pixels");
 					out = renderer.readPixels(width, height);
-					Visage.log.finest("Rescaled image");
+					if (Visage.trace) Visage.log.finest("Rescaled image");
 				} finally {
 					renderer.finish();
-					Visage.log.finest("Finished renderer");
+					if (Visage.trace) Visage.log.finest("Finished renderer");
 				}
 				break;
 			}
 		}
 		ImageIO.write(out, "PNG", png);
-		Visage.log.finest("Wrote png");
+		if (Visage.trace) Visage.log.finest("Wrote png");
 		return png.toByteArray();
 	}
 

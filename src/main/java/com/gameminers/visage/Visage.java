@@ -23,6 +23,7 @@ public class Visage {
 	public static final String VERSION = "1.0.0";
 	public static final Formatter logFormat = new VisageFormatter();
 	public static final Logger log = Logger.getLogger("com.gameminers.visage");
+	public static boolean debug, trace;
 	public static boolean ansi;
 	public static void main(String[] args) throws Exception {
 		AnsiConsole.systemInstall();
@@ -32,9 +33,11 @@ public class Visage {
 		log.setUseParentHandlers(false);
 		log.addHandler(con);
 		if (Boolean.parseBoolean(System.getProperty("com.gameminers.visage.trace"))) {
+			trace = debug = true;
 			log.setLevel(Level.ALL);
 			con.setLevel(Level.ALL);
 		} else if (Boolean.parseBoolean(System.getProperty("com.gameminers.visage.debug"))) {
+			debug = true;
 			log.setLevel(Level.FINER);
 			con.setLevel(Level.FINER);
 		} else {
@@ -49,6 +52,9 @@ public class Visage {
 		fileSwitch = parser.acceptsAll(Arrays.asList("config", "c"), "Load the given config file instead of the default conf/[mode].conf").withRequiredArg().ofType(File.class);
 		OptionSet set = parser.parse(args);
 		File confFile = fileSwitch.value(set);
+		if (debug || trace) {
+			log.warning("You have debug and/or trace logging enabled. This will severely impact performance.");
+		}
 		if (set.has("master")) {
 			if (confFile == null) {
 				confFile = new File("conf/master.conf");

@@ -130,7 +130,7 @@ public abstract class Renderer {
 	public void upload(BufferedImage img, int tex) {
 		int width = img.getWidth();
 		int height = img.getHeight();
-		Visage.log.finer("Uploading "+width+"x"+height+" ("+(width*height)+" pixel) image");
+		if (Visage.debug) Visage.log.finer("Uploading "+width+"x"+height+" ("+(width*height)+" pixel) image");
 		int[] argb = new int[width*height];
 		img.getRGB(0, 0, width, height, argb, 0, width);
 		IntBuffer buf = BufferUtils.createIntBuffer(width*height);
@@ -162,7 +162,7 @@ public abstract class Renderer {
 	}
 	public void init(int supersampling) throws LWJGLException {
 		this.supersampling = supersampling;
-		Visage.log.finer("["+name+"] Initializing Pbuffer (assuming "+supersampling+"x supersampling)");
+		if (Visage.debug) Visage.log.finer("["+name+"] Initializing Pbuffer (assuming "+supersampling+"x supersampling)");
 		if (pbuffer != null) {
 			destroy();
 		}
@@ -171,7 +171,7 @@ public abstract class Renderer {
 			throw new LWJGLException("Could not create Pbuffer");
 		pbuffer.makeCurrent();
 		
-		Visage.log.finer("["+name+"] Setting up VBOs");
+		if (Visage.debug) Visage.log.finer("["+name+"] Setting up VBOs");
 		IntBuffer ids = BufferUtils.createIntBuffer(2);
 		glGenBuffersARB(ids);
 		vbo = ids.get();
@@ -238,7 +238,7 @@ public abstract class Renderer {
 		glEnable(GL_LIGHT0);
 		checkGLError();
 		
-		Visage.log.finer("["+name+"] Initializing primitives");
+		if (Visage.debug) Visage.log.finer("["+name+"] Initializing primitives");
 		initPrimitives();
 		initialized = true;
 	}
@@ -267,8 +267,6 @@ public abstract class Renderer {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_CULL_FACE);
 		
-		prims.clear();
-		initPrimitives(); // TODO remove, this method should only be called during first init
 	}
 	public void finish() throws LWJGLException {
 		pbuffer.releaseContext();
@@ -281,7 +279,7 @@ public abstract class Renderer {
 		int[] pixels = new int[width*height];
 		buf.asIntBuffer().get(pixels);
 		img.setRGB(0, 0, width, height, pixels, 0, width);
-		Visage.log.finest("Read pixels");
+		if (Visage.trace) Visage.log.finest("Read pixels");
 		return Images.toBuffered(img.getScaledInstance(width/supersampling, height/supersampling, Image.SCALE_AREA_AVERAGING));
 	}
 }

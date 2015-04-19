@@ -44,7 +44,7 @@ public class VisageSlave extends Thread {
 			name = config.getString("name");
 			if (name.startsWith("~")) {
 				String command = name.substring(1);
-				Visage.log.finer("Running command '"+command+"' to determine the slave's name");
+				if (Visage.debug) Visage.log.finer("Running command '"+command+"' to determine the slave's name");
 				Process proc = Runtime.getRuntime().exec(command);
 				byte[] bys = ByteStreams.toByteArray(proc.getInputStream());
 				name = new String(bys).replace("\n", "").replace("\r", "");
@@ -81,7 +81,7 @@ public class VisageSlave extends Thread {
 				Visage.log.fine("Visage fully supports your OS and graphics driver.");
 			}
 			test.destroy();
-			Visage.log.finer("Downloading default skins");
+			if (Visage.debug) Visage.log.finer("Downloading default skins");
 			steve = ImageIO.read(URLUtils.constantURL("https://minecraft.net/images/steve.png"));
 			alex = ImageIO.read(URLUtils.constantURL("https://minecraft.net/images/alex.png"));
 			Visage.log.info("Connecting to RabbitMQ at "+config.getString("rabbitmq.host")+":"+config.getInt("rabbitmq.port"));
@@ -89,7 +89,7 @@ public class VisageSlave extends Thread {
 			factory.setHost(config.getString("rabbitmq.host"));
 			factory.setPort(config.getInt("rabbitmq.port"));
 			if (config.hasPath("rabbitmq.user")) {
-				Visage.log.finer("Using authentication");
+				if (Visage.debug) Visage.log.finer("Using authentication");
 				factory.setUsername(config.getString("rabbitmq.user"));
 				factory.setPassword(config.getString("rabbitmq.password"));
 			}
@@ -102,7 +102,7 @@ public class VisageSlave extends Thread {
 			}
 			channel = conn.createChannel();
 			String queue = config.getString("rabbitmq.queue");
-			Visage.log.finer("Setting up queue '"+queue+"'");
+			if (Visage.debug) Visage.log.finer("Setting up queue '"+queue+"'");
 			channel.queueDeclare(queue, false, false, true, null);
 			int qos = config.getInt("qos");
 			if (qos != -1) {
@@ -118,7 +118,7 @@ public class VisageSlave extends Thread {
 				while (true) {
 					try {
 						Delivery delivery = consumer.nextDelivery();
-						Visage.log.finer("Received job, passing on to render thread");
+						if (Visage.debug) Visage.log.finer("Received job, passing on to render thread");
 						RenderThread thread = threads.get(idx);
 						thread.process(delivery);
 						idx++;

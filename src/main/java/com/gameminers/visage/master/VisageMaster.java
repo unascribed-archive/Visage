@@ -48,6 +48,9 @@ import org.spacehq.mc.auth.properties.Property;
 
 import com.gameminers.visage.Visage;
 import com.gameminers.visage.RenderMode;
+import com.gameminers.visage.master.cache.CacheManager;
+import com.gameminers.visage.master.cache.GuavaBasicCacheManager;
+import com.gameminers.visage.master.cache.JCSCacheManager;
 import com.gameminers.visage.master.exception.NoSlavesAvailableException;
 import com.gameminers.visage.master.exception.RenderFailedException;
 import com.gameminers.visage.master.glue.HeaderHandler;
@@ -68,6 +71,7 @@ public class VisageMaster extends Thread {
 	public Config config;
 	public Connection conn;
 	public Channel channel;
+	public CacheManager cache;
 	public VisageMaster(Config config) {
 		super("Master thread");
 		this.config = config;
@@ -78,13 +82,19 @@ public class VisageMaster extends Thread {
 			Log.setLog(new LogShim(Visage.log));
 			long total = Runtime.getRuntime().totalMemory();
 			long max = Runtime.getRuntime().maxMemory();
-			Visage.log.finer("Current heap size: "+humanReadableByteCount(total, false));
-			Visage.log.finer("Max heap size: "+humanReadableByteCount(max, false));
+			if (Visage.debug) Visage.log.finer("Current heap size: "+humanReadableByteCount(total, false));
+			if (Visage.debug) Visage.log.finer("Max heap size: "+humanReadableByteCount(max, false));
 			if (total < max) {
 				Visage.log.warning("You have set your minimum heap size (Xms) lower than the maximum heap size (Xmx) - this can cause GC thrashing. It is strongly recommended to set them both to the same value.");
 			}
 			if (max < (1000*1000*1000)) {
 				Visage.log.warning("The heap size (Xmx) is less than one gigabyte; it is recommended to run Visage with a gigabyte or more. Use -Xms1G and -Xmx1G to do this.");
+			}
+			Visage.log.info("Initializing cache");
+			if (config.getBoolean("cache.enabled")) {
+				cache = new GuavaBasicCacheManager();
+			} else {
+				cache = new JCSCacheManager(config.getConfig("cache"));
 			}
 			Visage.log.info("Setting up Jetty");
 			Server server = new Server(new InetSocketAddress(config.getString("http.bind"), config.getInt("http.port")));
@@ -124,11 +134,11 @@ public class VisageMaster extends Thread {
 			
 			conn = factory.newConnection();
 			channel = conn.createChannel();
-			Visage.log.finer("Setting up queue '"+queue+"'");
+			if (Visage.debug) Visage.log.finer("Setting up queue '"+queue+"'");
 			channel.queueDeclare(queue, false, false, true, null);
 			channel.basicQos(1);
 			
-			Visage.log.finer("Setting up reply queue");
+			if (Visage.debug) Visage.log.finer("Setting up reply queue");
 			replyQueue = channel.queueDeclare().getQueue();
 			consumer = new QueueingConsumer(channel);
 			channel.basicConsume(replyQueue, consumer);
@@ -144,19 +154,19 @@ public class VisageMaster extends Thread {
 			try {
 				while (true) {
 					Delivery delivery = consumer.nextDelivery();
-					Visage.log.finest("Got delivery");
+					if (Visage.trace) Visage.log.finest("Got delivery");
 					try {
 						String corrId = delivery.getProperties().getCorrelationId();
 						if (queuedJobs.containsKey(corrId)) {
-							Visage.log.finest("Valid");
+							if (Visage.trace) Visage.log.finest("Valid");
 							responses.put(corrId, delivery.getBody());
 							Runnable run = queuedJobs.get(corrId);
 							queuedJobs.remove(corrId);
-							Visage.log.finest("Removed from queue");
+							if (Visage.trace) Visage.log.finest("Removed from queue");
 							run.run();
-							Visage.log.finest("Ran runnable");
+							if (Visage.trace) Visage.log.finest("Ran runnable");
 							channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
-							Visage.log.finest("Ack'd");
+							if (Visage.trace) Visage.log.finest("Ack'd");
 						} else {
 							Visage.log.warning("Unknown correlation ID?");
 							channel.basicNack(delivery.getEnvelope().getDeliveryTag(), false, false);
@@ -195,12 +205,12 @@ public class VisageMaster extends Thread {
 			dos.flush();
 			defos.finish();
 			channel.basicPublish("", config.getString("rabbitmq.queue"), props, baos.toByteArray());
-			Visage.log.finer("Requested a "+width+"x"+height+" "+mode.name().toLowerCase()+" render ("+supersampling+"x supersampling) for "+(profile == null ? "null" : profile.getName()));
+			if (Visage.debug) Visage.log.finer("Requested a "+width+"x"+height+" "+mode.name().toLowerCase()+" render ("+supersampling+"x supersampling) for "+(profile == null ? "null" : profile.getName()));
 			final Object waiter = new Object();
 			queuedJobs.put(corrId, new Runnable() {
 				@Override
 				public void run() {
-					Visage.log.finer("Got response");
+					if (Visage.debug) Visage.log.finer("Got response");
 					synchronized (waiter) {
 						waiter.notify();
 					}
@@ -210,12 +220,12 @@ public class VisageMaster extends Thread {
 			long timeout = config.getDuration("render.timeout", TimeUnit.MILLISECONDS);
 			synchronized (waiter) {
 				while (queuedJobs.containsKey(corrId) && (System.currentTimeMillis()-start) < timeout) {
-					Visage.log.finest("Waiting...");
+					if (Visage.trace) Visage.log.finest("Waiting...");
 					waiter.wait(timeout);
 				}
 			}
 			if (queuedJobs.containsKey(corrId)) {
-				Visage.log.finest("Queue still contains this request, assuming timeout");
+				if (Visage.trace) Visage.log.finest("Queue still contains this request, assuming timeout");
 				queuedJobs.remove(corrId);
 				throw new RenderFailedException("Request timed out");
 			}
@@ -228,14 +238,14 @@ public class VisageMaster extends Thread {
 			int type = bais.read();
 			byte[] payload = ByteStreams.toByteArray(bais);
 			if (type == 0) {
-				Visage.log.finest("Got type 0, success");
+				if (Visage.trace) Visage.log.finest("Got type 0, success");
 				RenderResponse resp = new RenderResponse();
 				resp.slave = slave;
 				resp.png = payload;
-				Visage.log.finer("Receieved render from "+resp.slave);
+				if (Visage.debug) Visage.log.finer("Receieved render from "+resp.slave);
 				return resp;
 			} else if (type == 1) {
-				Visage.log.finest("Got type 1, failure");
+				if (Visage.trace) Visage.log.finest("Got type 1, failure");
 				ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(payload));
 				Throwable t = (Throwable)ois.readObject();
 				throw new RenderFailedException("Slave reported error", t);

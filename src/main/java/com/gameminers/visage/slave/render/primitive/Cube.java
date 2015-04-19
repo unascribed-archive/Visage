@@ -15,7 +15,7 @@ public class Cube extends Primitive {
 	@Override
 	public void render(Renderer renderer) {
 		if (tcbo == Integer.MAX_VALUE) {
-			Visage.log.finer("Creating texture coord buffer");
+			if (Visage.debug) Visage.log.finer("Creating texture coord buffer");
 			tcbo = glGenBuffersARB();
 			FloatBuffer uv = BufferUtils.createFloatBuffer(texture.u.length+texture.v.length);
 			for (int i = 0; i < texture.u.length; i++) {
