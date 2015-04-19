@@ -1,7 +1,9 @@
 package com.gameminers.visage.slave.render;
 
+import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.List;
@@ -16,6 +18,7 @@ import org.lwjgl.opengl.PixelFormat;
 
 import com.gameminers.visage.Visage;
 import com.gameminers.visage.slave.render.primitive.Primitive;
+import com.gameminers.visage.util.Images;
 import com.google.common.collect.Lists;
 
 import static org.lwjgl.opengl.ARBVertexBufferObject.*;
@@ -269,5 +272,16 @@ public abstract class Renderer {
 	}
 	public void finish() throws LWJGLException {
 		pbuffer.releaseContext();
+	}
+	public BufferedImage readPixels(int width, int height) throws InterruptedException {
+		glReadBuffer(GL_FRONT);
+		ByteBuffer buf = BufferUtils.createByteBuffer(width * height * 4);
+		glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_BYTE, buf);
+		BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+		int[] pixels = new int[width*height];
+		buf.asIntBuffer().get(pixels);
+		img.setRGB(0, 0, width, height, pixels, 0, width);
+		Visage.log.finest("Read pixels");
+		return Images.toBuffered(img.getScaledInstance(width/supersampling, height/supersampling, Image.SCALE_AREA_AVERAGING));
 	}
 }

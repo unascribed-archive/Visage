@@ -10,7 +10,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.URL;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -21,9 +20,6 @@ import java.util.zip.InflaterInputStream;
 
 import javax.imageio.ImageIO;
 
-import org.lwjgl.BufferUtils;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL12;
 import org.spacehq.mc.auth.GameProfile;
 import org.spacehq.mc.auth.ProfileTexture;
 import org.spacehq.mc.auth.ProfileTextureType;
@@ -33,7 +29,6 @@ import org.spacehq.mc.auth.util.Base64;
 import com.gameminers.visage.Visage;
 import com.gameminers.visage.RenderMode;
 import com.gameminers.visage.slave.render.Renderer;
-import com.gameminers.visage.util.Images;
 import com.gameminers.visage.util.UUIDs;
 import com.google.gson.JsonObject;
 import com.rabbitmq.client.AMQP.BasicProperties;
@@ -185,15 +180,7 @@ public class RenderThread extends Thread {
 					Visage.log.finest("Rendering");
 					renderer.render(width, height);
 					Visage.log.finest("Rendered - reading pixels");
-					GL11.glReadBuffer(GL11.GL_FRONT);
-					ByteBuffer buf = BufferUtils.createByteBuffer(width * height * 4);
-					GL11.glReadPixels(0, 0, width, height, GL12.GL_BGRA, GL11.GL_UNSIGNED_BYTE, buf);
-					BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-					int[] pixels = new int[width*height];
-					buf.asIntBuffer().get(pixels);
-					img.setRGB(0, 0, width, height, pixels, 0, width);
-					Visage.log.finest("Read pixels");
-					out = Images.toBuffered(img.getScaledInstance(width/supersampling, height/supersampling, Image.SCALE_AREA_AVERAGING));
+					out = renderer.readPixels(width, height);
 					Visage.log.finest("Rescaled image");
 				} finally {
 					renderer.finish();

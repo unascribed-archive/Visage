@@ -13,8 +13,8 @@ welcome. I'm just not using the Lapis name anymore.
 `./gradlew`. Only Linux is confirmed to work. You can try your luck on Windows.
 
 ## Benchmarking
-Visage includes an extremely simple benchmark that renders as many skins as possible in 5 seconds and reports
-how many skins it was able to render. You can invoke it by running `java -jar Visage.jar --benchmark`.
+Visage includes a simple benchmark to help see how well it will work on a given system. You can invoke it by
+running `java -jar Visage.jar --benchmark`.
 
 ## Setup
 
