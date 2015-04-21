@@ -28,13 +28,11 @@ import com.gameminers.visage.Visage;
 import com.gameminers.visage.RenderMode;
 import com.gameminers.visage.master.exception.NoSlavesAvailableException;
 import com.gameminers.visage.master.exception.RenderFailedException;
+import com.google.common.collect.Lists;
 
 public class VisageHandler extends AbstractHandler {
-	public static final String TYPES = "(face|head|portrait|player|skin)";
-	
-	public static final Pattern URL_PATTERN = Pattern.compile("/(.*)");
-	public static final Pattern URL_WITH_MODE_PATTERN = Pattern.compile("/"+TYPES+"/(.*)");
-	public static final Pattern URL_WITH_SIZE_AND_MODE_PATTERN = Pattern.compile("/"+TYPES+"/([0-9]+)/(.*)");
+	public static final Pattern URL_WITH_MODE_PATTERN = Pattern.compile("^/([A-Za-z]*?)/([A-Za-z0-9_]*|X-Steve|X-Alex)(?:\\.png)?$");
+	public static final Pattern URL_WITH_SIZE_AND_MODE_PATTERN = Pattern.compile("^/([A-Za-z]*?)/([0-9]+)/([A-Za-z0-9_]*|X-Steve|X-Alex)(?:\\.png)?$");
 	
 	public static final Pattern USERNAME_PATTERN = Pattern.compile("^[A-Za-z0-9_]{1,16}$");
 	public static final Pattern DASHLESS_UUID_PATTERN = Pattern.compile("^([A-Fa-f0-9]{8})([A-Fa-f0-9]{4})([A-Fa-f0-9]{4})([A-Fa-f0-9]{4})([A-Fa-f0-9]{12})$");
@@ -83,12 +81,16 @@ public class VisageHandler extends AbstractHandler {
 		int width = defaultSize;
 		RenderMode mode = RenderMode.PLAYER;
 		String subject;
+		final List<String> missed = Lists.newArrayList("skin", "render"); // TODO
 		
 		// XXX Regex is probably a slow (and somewhat confusing) way to do this
 		Matcher uwsam = URL_WITH_SIZE_AND_MODE_PATTERN.matcher(target);
 		if (uwsam.matches()) {
 			try {
 				mode = RenderMode.valueOf(uwsam.group(1).toUpperCase());
+				if (!allowedModes.contains(mode)) {
+					throw new IllegalArgumentException();
+				}
 			} catch (IllegalArgumentException e) {
 				response.sendError(400, "Invalid render mode '"+uwsam.group(1)+"' - must be one of "+allowedModesS);
 				return;
@@ -105,79 +107,83 @@ public class VisageHandler extends AbstractHandler {
 			if (uwm.matches()) {
 				try {
 					mode = RenderMode.valueOf(uwm.group(1).toUpperCase());
+					if (!allowedModes.contains(mode)) {
+						throw new IllegalArgumentException();
+					}
 				} catch (IllegalArgumentException e) {
 					response.sendError(400, "Invalid render mode '"+uwm.group(1)+"' - must be one of "+allowedModesS);
 					return;
 				}
 				subject = uwm.group(2);
 			} else {
-				Matcher u = URL_PATTERN.matcher(target);
-				if (u.matches()) {
-					subject = u.group(1);
-				} else {
-					response.sendError(404);
-					return;
-				}
+				response.sendError(404);
+				return;
 			}
 		}
 		
 		UUID uuid = null;
-		Matcher dashed = UUID_PATTERN.matcher(subject);
-		if (dashed.matches()) {
-			uuid = UUID.fromString(subject);
+		if (subject.equals("X-Steve")) {
+			uuid = new UUID(0 | (8 << 12), 0);
+		} else if (subject.equals("X-Alex")) {
+			uuid = new UUID(0 | (8 << 12), 1);
 		} else {
-			Matcher dashless = DASHLESS_UUID_PATTERN.matcher(subject);
-			if (dashless.matches()) {
-				uuid = UUID.fromString(dashless.replaceAll("$1-$2-$3-$4-$5"));
+			Matcher dashed = UUID_PATTERN.matcher(subject);
+			if (dashed.matches()) {
+				uuid = UUID.fromString(subject);
 			} else {
-				if (usernames) {
-					Matcher username = USERNAME_PATTERN.matcher(subject);
-					if (username.matches()) {
-						if (master.cache.hasUsername(subject)) {
-							uuid = master.cache.getUUID(subject);
-						} else {
-							final Object[] result = new Object[1];
-							gpr.findProfilesByNames(new String[] {subject}, new ProfileLookupCallback() {
-								
-								@Override
-								public void onProfileLookupSucceeded(GameProfile profile) {
-									result[0] = profile.getId();
-								}
-								
-								@Override
-								public void onProfileLookupFailed(GameProfile profile, Exception e) {
-									result[0] = e;
-								}
-							});
-							if (result[0] == null || result[0] instanceof ProfileNotFoundException) {
-								response.sendError(400, "Could not find a player named '"+subject+"'");
-								return;
-							} else if (result[0] instanceof Exception) {
-								Exception e = (Exception) result[0];
-								Visage.log.log(Level.WARNING, "An error occurred while looking up a player name", e);
-								if (reportExceptions) {
-									response.setContentType("text/plain");
-									e.printStackTrace(response.getWriter());
-									response.setStatus(500);
-									response.flushBuffer();
+				Matcher dashless = DASHLESS_UUID_PATTERN.matcher(subject);
+				if (dashless.matches()) {
+					uuid = UUID.fromString(dashless.replaceAll("$1-$2-$3-$4-$5"));
+				} else {
+					if (usernames) {
+						Matcher username = USERNAME_PATTERN.matcher(subject);
+						if (username.matches()) {
+							if (master.cache.hasUsername(subject)) {
+								uuid = master.cache.getUUID(subject);
+							} else {
+								final Object[] result = new Object[1];
+								gpr.findProfilesByNames(new String[] {subject}, new ProfileLookupCallback() {
+									
+									@Override
+									public void onProfileLookupSucceeded(GameProfile profile) {
+										result[0] = profile.getId();
+									}
+									
+									@Override
+									public void onProfileLookupFailed(GameProfile profile, Exception e) {
+										result[0] = e;
+									}
+								});
+								if (result[0] == null || result[0] instanceof ProfileNotFoundException) {
+									response.sendError(400, "Could not find a player named '"+subject+"'");
+									return;
+								} else if (result[0] instanceof Exception) {
+									Exception e = (Exception) result[0];
+									Visage.log.log(Level.WARNING, "An error occurred while looking up a player name", e);
+									if (reportExceptions) {
+										response.setContentType("text/plain");
+										e.printStackTrace(response.getWriter());
+										response.setStatus(500);
+										response.flushBuffer();
+									} else {
+										response.sendError(500, "Could not render your request");
+									}
+									return;
+								} else if (result[0] instanceof UUID) {
+									uuid = (UUID) result[0];
 								} else {
 									response.sendError(500, "Could not render your request");
+									return;
 								}
-								return;
-							} else if (result[0] instanceof UUID) {
-								uuid = (UUID) result[0];
-							} else {
-								response.sendError(500, "Could not render your request");
-								return;
 							}
+						} else {
+							response.sendError(400, "Subject must be a dashless UUID, dashed UUID, or username");
+							return;
 						}
 					} else {
-						response.sendError(400, "Subject must be a dashless UUID, dashed UUID, or username");
+						response.sendError(400, "Subject must be a dashless or dashed UUID");
 						return;
 					}
-				} else {
-					response.sendError(400, "Subject must be a dashless or dashed UUID");
-					return;
 				}
 			}
 		}
@@ -194,12 +200,17 @@ public class VisageHandler extends AbstractHandler {
 			width = (int)Math.ceil(width * 0.625f);
 		}
 		final UUID uuidF = uuid;
+		final String subjectF = subject;
 		GameProfile profile;
 		try {
 			profile = master.cache.getProfile(uuid, new Callable<GameProfile>() {
 				
 				@Override
 				public GameProfile call() throws Exception {
+					if (uuidF.version() == 8) {
+						return new GameProfile(uuidF, subjectF.substring(2));
+					}
+					missed.add("profile");
 					GameProfile prof = new GameProfile(uuidF, null);
 					return ss.fillProfileProperties(prof);
 				}
@@ -250,6 +261,7 @@ public class VisageHandler extends AbstractHandler {
 		}
 		response.setContentType("image/png");
 		response.setContentLength(resp.png.length);
+		response.setHeader("X-Visage-Cache-Miss", Strings.join(missed, ", "));
 		response.getOutputStream().write(resp.png);
 		response.getOutputStream().flush();
 		response.setStatus(200);

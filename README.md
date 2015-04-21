@@ -1,5 +1,7 @@
 # Visage
-An avatar service based on a master/slave system. **Not finished.**
+An avatar service based on a master/slave system.
+
+# A hosted Visage server is now available at https://visage.gameminers.com/ 
 
 ## Why did you split this off from Lapis?
 I'm not directly involved with Sponge or Lapis anymore, and the 2.0.0 rewrite was turning out to be all my
