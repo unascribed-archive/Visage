@@ -81,7 +81,6 @@ public class VisageHandler extends AbstractHandler {
 			return;
 		}
 		int width = defaultSize;
-		int height = width;
 		RenderMode mode = RenderMode.PLAYER;
 		String subject;
 		
@@ -187,10 +186,12 @@ public class VisageHandler extends AbstractHandler {
 			response.sendError(500, "Could not render your request");
 		}
 		
+		int height = width;
+		
 		width *= supersampling;
 		height *= supersampling;
 		if (mode == RenderMode.PLAYER) {
-			height = (int)Math.ceil(width * 1.625f);
+			width = (int)Math.ceil(width * 0.625f);
 		}
 		final UUID uuidF = uuid;
 		GameProfile profile;
