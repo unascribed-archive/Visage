@@ -20,7 +20,7 @@ public class LogShim extends AbstractLogger {
 
 	@Override
 	public void warn(String msg, Object... args) {
-		log.warning(String.format(msg, args));
+		log.warning(format(msg, args));
 	}
 
 	@Override
@@ -39,7 +39,7 @@ public class LogShim extends AbstractLogger {
 
 	@Override
 	public void info(String msg, Object... args) {
-		log.info(String.format(msg, args));
+		log.info(format(msg, args));
 	}
 
 	@Override
@@ -68,12 +68,12 @@ public class LogShim extends AbstractLogger {
 
 	@Override
 	public void debug(String msg, Object... args) {
-		log.finer(String.format(msg, args));
+		log.finer(format(msg, args));
 	}
 
 	@Override
 	public void debug(String msg, long value) {
-		log.finer(String.format(msg, value));
+		log.finer(format(msg, value));
 	}
 
 	@Override
@@ -97,5 +97,27 @@ public class LogShim extends AbstractLogger {
 	protected Logger newLogger(String fullname) {
 		return new LogShim(log);
 	}
-
+	
+	// From org.eclipse.jetty.util.log.JavaUtilLog
+	private String format(String msg, Object... args) {
+		msg = String.valueOf(msg); // Avoids NPE
+		String braces = "{}";
+		StringBuilder builder = new StringBuilder();
+		int start = 0;
+		for (Object arg : args) {
+			int bracesIndex = msg.indexOf(braces, start);
+			if (bracesIndex < 0) {
+				builder.append(msg.substring(start));
+				builder.append(" ");
+				builder.append(arg);
+				start = msg.length();
+			} else {
+				builder.append(msg.substring(start, bracesIndex));
+				builder.append(String.valueOf(arg));
+				start = bracesIndex + braces.length();
+			}
+		}
+		builder.append(msg.substring(start));
+		return builder.toString();
+	}
 }

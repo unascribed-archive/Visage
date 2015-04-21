@@ -42,6 +42,7 @@ import java.util.zip.DeflaterOutputStream;
 import org.eclipse.jetty.server.AsyncNCSARequestLog;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.ResourceHandler;
+import org.eclipse.jetty.server.handler.gzip.GzipHandler;
 import org.eclipse.jetty.util.log.Log;
 import org.spacehq.mc.auth.GameProfile;
 import org.spacehq.mc.auth.properties.Property;
@@ -50,7 +51,6 @@ import com.gameminers.visage.Visage;
 import com.gameminers.visage.RenderMode;
 import com.gameminers.visage.master.cache.CacheManager;
 import com.gameminers.visage.master.cache.GuavaBasicCacheManager;
-import com.gameminers.visage.master.cache.JCSCacheManager;
 import com.gameminers.visage.master.exception.NoSlavesAvailableException;
 import com.gameminers.visage.master.exception.RenderFailedException;
 import com.gameminers.visage.master.glue.HeaderHandler;
@@ -91,11 +91,12 @@ public class VisageMaster extends Thread {
 				Visage.log.warning("The heap size (Xmx) is less than one gigabyte; it is recommended to run Visage with a gigabyte or more. Use -Xms1G and -Xmx1G to do this.");
 			}
 			Visage.log.info("Initializing cache");
-			if (config.getBoolean("cache.enabled")) {
+			// TODO
+			//if (!config.getBoolean("cache.enabled")) {
 				cache = new GuavaBasicCacheManager();
-			} else {
-				cache = new JCSCacheManager(config.getConfig("cache"));
-			}
+			//} else {
+			//	cache = new JCSCacheManager(config.getConfig("cache"));
+			//}
 			Visage.log.info("Setting up Jetty");
 			Server server = new Server(new InetSocketAddress(config.getString("http.bind"), config.getInt("http.port")));
 			
@@ -120,7 +121,9 @@ public class VisageMaster extends Thread {
 			if (!"/dev/null".equals(config.getString("log"))) {
 				server.setRequestLog(new AsyncNCSARequestLog(config.getString("log")));
 			}
-			server.setHandler(new HeaderHandler("X-Powered-By", poweredBy, resource));
+			GzipHandler gzip = new GzipHandler();
+			gzip.setHandler(new HeaderHandler("X-Powered-By", poweredBy, resource));
+			server.setHandler(gzip);
 			
 			Visage.log.info("Connecting to RabbitMQ at "+config.getString("rabbitmq.host")+":"+config.getInt("rabbitmq.port"));
 			ConnectionFactory factory = new ConnectionFactory();

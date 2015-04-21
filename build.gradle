@@ -26,8 +26,8 @@ ext {
 repositories {
     mavenCentral()
 	maven {
-		name 'spacehq'
-		url 'http://repo.spacehq.org/content/repositories/release/'
+		name 'gameminers'
+		url 'http://mvn.gameminers.com/artifactory/repo'
 	}
 }
 
@@ -42,9 +42,10 @@ dependencies {
 	compile 'com.rabbitmq:amqp-client:3.5.1'
 	compile 'com.google.code.gson:gson:2.2.4'
 	compile 'org.fusesource.jansi:jansi:1.11'
-	compile 'org.spacehq:mcauthlib:1.0'
+	compile 'org.spacehq:mcauthlib:1.0-gm-fixed'
 	compile 'org.apache.commons:commons-jcs:2.0-beta-1'
 	compile 'com.h2database:h2:1.4.187'
+	compile 'jline:jline:2.12.1'
 }
 
 // Read source files using UTF-8
@@ -61,8 +62,7 @@ natives {
 
 // License header formatting
 license {
-    header file('LICENSE')
-	include 'src/main/java/com/gameminers/**/*'
+	exclude 'src/main/java/org/spacehq/mc/auth/SessionService.java'
     sourceSets = project.sourceSets
     ignoreFailures false
     strictCheck true
