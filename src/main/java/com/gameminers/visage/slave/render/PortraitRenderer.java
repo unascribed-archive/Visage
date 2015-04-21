@@ -75,7 +75,7 @@ public class PortraitRenderer extends Renderer {
 		stage.members.add(rarm);
 		Cube rarm2 = new Cube();
 		rarm2.x = -1.7f;
-		rarm2.y = 1.85f;
+		rarm2.y = 2.3f;
 		rarm2.z = 0.15f;
 		rarm2.scaleY = 1.55f;
 		rarm2.scaleZ = 0.55f;
