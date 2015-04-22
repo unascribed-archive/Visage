@@ -192,7 +192,7 @@ public class VisageMaster extends Thread {
 	private QueueingConsumer consumer;
 	private Map<String, Runnable> queuedJobs = Maps.newHashMap();
 	private Map<String, byte[]> responses = Maps.newHashMap();
-	public RenderResponse renderRpc(RenderMode mode, int width, int height, int supersampling, GameProfile profile) throws RenderFailedException, NoSlavesAvailableException {
+	public RenderResponse renderRpc(RenderMode mode, int width, int height, int supersampling, GameProfile profile, Map<String, String[]> switches) throws RenderFailedException, NoSlavesAvailableException {
 		baos.reset();
 		try {
 			byte[] response = null;
@@ -205,6 +205,14 @@ public class VisageMaster extends Thread {
 			dos.writeShort(height);
 			dos.writeByte(supersampling);
 			writeGameProfile(dos, profile);
+			dos.writeShort(switches.size());
+			for (Entry<String, String[]> en : switches.entrySet()) {
+				dos.writeUTF(en.getKey());
+				dos.writeShort(en.getValue().length);
+				for (String s : en.getValue()) {
+					dos.writeUTF(s);
+				}
+			}
 			dos.flush();
 			defos.finish();
 			channel.basicPublish("", config.getString("rabbitmq.queue"), props, baos.toByteArray());

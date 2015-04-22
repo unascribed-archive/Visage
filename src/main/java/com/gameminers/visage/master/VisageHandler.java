@@ -26,8 +26,6 @@ import org.spacehq.mc.auth.exception.ProfileNotFoundException;
 
 import com.gameminers.visage.Visage;
 import com.gameminers.visage.RenderMode;
-import com.gameminers.visage.master.exception.NoSlavesAvailableException;
-import com.gameminers.visage.master.exception.RenderFailedException;
 import com.google.common.collect.Lists;
 
 public class VisageHandler extends AbstractHandler {
@@ -43,7 +41,7 @@ public class VisageHandler extends AbstractHandler {
 	private final GameProfileRepository gpr = new GameProfileRepository();
 	
 	private final boolean cacheHeader, slaveHeader, reportExceptions, usernames;
-	private final int supersampling, minSize, defaultSize, maxSize;
+	private final int supersampling, minSize, defaultSize, maxSize, maxAttempts;
 	private final EnumSet<RenderMode> allowedModes = EnumSet.noneOf(RenderMode.class);
 	private final String allowedModesS;
 	
@@ -64,6 +62,7 @@ public class VisageHandler extends AbstractHandler {
 		minSize = master.config.getInt("render.min-size");
 		defaultSize = master.config.getInt("render.default-size");
 		maxSize = master.config.getInt("render.max-size");
+		maxAttempts = master.config.getInt("render.tries");
 		List<String> modes = master.config.getStringList("modes");
 		for (String s : modes) {
 			try {
@@ -228,43 +227,48 @@ public class VisageHandler extends AbstractHandler {
 			return;
 		}
 		
-		RenderResponse resp;
-		try {
-			resp = master.renderRpc(mode, width, height, supersampling, profile);
-		} catch (RenderFailedException e) {
-			Visage.log.log(Level.WARNING, "An error occurred while rendering a request", e);
+		RenderResponse resp = null;
+		Exception ex = null;
+		int attempts = 0;
+		while (attempts < maxAttempts) {
+			attempts++;
+			try {
+				resp = master.renderRpc(mode, width, height, supersampling, profile, request.getParameterMap());
+			} catch (Exception e) {
+				ex = e;
+				continue;
+			}
+			if (resp == null) {
+				continue;
+			}
+			if (slaveHeader) {
+				response.setHeader("X-Visage-Slave", resp.slave);
+			}
+			response.setContentType("image/png");
+			response.setContentLength(resp.png.length);
+			response.setHeader("X-Visage-Cache-Miss", Strings.join(missed, ", "));
+			response.getOutputStream().write(resp.png);
+			response.getOutputStream().flush();
+			response.setStatus(200);
+			response.flushBuffer();
+			return;
+		}
+		if (ex != null) {
+			Visage.log.log(Level.WARNING, "An error occurred while rendering a request", ex);
 			if (reportExceptions) {
 				response.setContentType("text/plain");
-				e.printStackTrace(response.getWriter());
+				ex.printStackTrace(response.getWriter());
 				response.setStatus(500);
 				response.flushBuffer();
 			} else {
 				response.sendError(500, "Could not render your request");
 			}
 			return;
-		} catch (NoSlavesAvailableException e) {
-			response.setContentType("text/plain;charset=utf-8");
-			response.getWriter().println("No slaves are available to render your request");
-			response.setStatus(503);
-			response.flushBuffer();
-			return;
-		}
-		if (resp == null) {
+		} else if (resp == null) {
 			response.setContentType("text/plain;charset=utf-8");
 			response.getWriter().println("Could not render your request");
 			response.setStatus(500);
 			response.flushBuffer();
-			return;
 		}
-		if (slaveHeader) {
-			response.setHeader("X-Visage-Slave", resp.slave);
-		}
-		response.setContentType("image/png");
-		response.setContentLength(resp.png.length);
-		response.setHeader("X-Visage-Cache-Miss", Strings.join(missed, ", "));
-		response.getOutputStream().write(resp.png);
-		response.getOutputStream().flush();
-		response.setStatus(200);
-		response.flushBuffer();
 	}
 }
