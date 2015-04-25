@@ -187,17 +187,16 @@ public class VisageMaster extends Thread {
 			System.exit(1);
 		}
 	}
-	private final ByteArrayOutputStream baos = new ByteArrayOutputStream();
 	private String replyQueue;
 	private QueueingConsumer consumer;
 	private Map<String, Runnable> queuedJobs = Maps.newHashMap();
 	private Map<String, byte[]> responses = Maps.newHashMap();
 	public RenderResponse renderRpc(RenderMode mode, int width, int height, int supersampling, GameProfile profile, Map<String, String[]> switches) throws RenderFailedException, NoSlavesAvailableException {
-		baos.reset();
 		try {
 			byte[] response = null;
 			String corrId = UUID.randomUUID().toString();
 			BasicProperties props = new BasicProperties.Builder().correlationId(corrId).replyTo(replyQueue).build();
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			DeflaterOutputStream defos = new DeflaterOutputStream(baos);
 			DataOutputStream dos = new DataOutputStream(defos);
 			dos.writeByte(mode.ordinal());

@@ -40,7 +40,6 @@ public class RenderThread extends Thread {
 	private Renderer[] renderers;
 	private boolean run = true;
 	private Deque<Delivery> toProcess = new ArrayDeque<>();
-	private ByteArrayOutputStream png = new ByteArrayOutputStream();
 	public RenderThread(VisageSlave parent) {
 		super("Render thread #"+(nextId++));
 		this.parent = parent;
@@ -128,8 +127,6 @@ public class RenderThread extends Thread {
 	}
 
 	public byte[] draw(RenderMode mode, int width, int height, int supersampling, GameProfile profile) throws Exception {
-		png.reset();
-		if (Visage.trace) Visage.log.finest("Reset png");
 		Map<ProfileTextureType, ProfileTexture> tex = parent.session.getTextures(profile, false);
 		boolean slim = isSlim(profile);
 		BufferedImage skin;
@@ -189,6 +186,7 @@ public class RenderThread extends Thread {
 				break;
 			}
 		}
+		ByteArrayOutputStream png = new ByteArrayOutputStream();
 		ImageIO.write(out, "PNG", png);
 		if (Visage.trace) Visage.log.finest("Wrote png");
 		return png.toByteArray();
