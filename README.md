@@ -17,7 +17,7 @@ There is an [official hosted Visage site][1] with full API documentation.
 This source repository is for developers looking to help out and sysadmins looking to run their own Visage servers.
 
 ## For Users
-If you want a avatar to use on other people's sites, you can go over to the [official Visage site][1] and
+If you want an avatar to use on other people's sites, you can go over to the [official Visage site][1] and
 use the Quick Render feature to generate a maximum-resolution render of your skin and download it to your
 computer.
 
