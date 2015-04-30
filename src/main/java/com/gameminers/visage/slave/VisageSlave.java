@@ -1,11 +1,8 @@
 package com.gameminers.visage.slave;
 
-import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
-
-import javax.imageio.ImageIO;
 
 import org.lwjgl.opengl.ContextAttribs;
 import org.lwjgl.opengl.GL11;
@@ -13,9 +10,8 @@ import org.lwjgl.opengl.GLContext;
 import org.lwjgl.opengl.Pbuffer;
 import org.lwjgl.opengl.PixelFormat;
 import org.spacehq.mc.auth.SessionService;
-import org.spacehq.mc.auth.util.URLUtils;
-
 import com.gameminers.visage.Visage;
+import com.gameminers.visage.VisageRunner;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.io.ByteStreams;
@@ -24,19 +20,20 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.QueueingConsumer;
+import com.rabbitmq.client.ShutdownSignalException;
 import com.rabbitmq.client.QueueingConsumer.Delivery;
 import com.typesafe.config.Config;
 
-public class VisageSlave extends Thread {
+public class VisageSlave extends Thread implements VisageRunner {
 	protected Config config;
 	protected SessionService session = new SessionService();
 	protected Gson gson = new Gson();
-	protected BufferedImage steve, alex;
 	protected String name;
 	protected Connection conn;
 	protected Channel channel;
 	protected List<RenderThread> threads = Lists.newArrayList();
 	protected int idx = 0;
+	private boolean run = true;
 	public VisageSlave(Config config) {
 		super("Slave thread");
 		this.config = config;
@@ -81,9 +78,6 @@ public class VisageSlave extends Thread {
 				Visage.log.fine("Visage fully supports your OS and graphics driver.");
 			}
 			test.destroy();
-			if (Visage.debug) Visage.log.finer("Downloading default skins");
-			steve = ImageIO.read(URLUtils.constantURL("https://minecraft.net/images/steve.png"));
-			alex = ImageIO.read(URLUtils.constantURL("https://minecraft.net/images/alex.png"));
 			Visage.log.info("Connecting to RabbitMQ at "+config.getString("rabbitmq.host")+":"+config.getInt("rabbitmq.port"));
 			ConnectionFactory factory = new ConnectionFactory();
 			factory.setHost(config.getString("rabbitmq.host"));
@@ -115,7 +109,7 @@ public class VisageSlave extends Thread {
 			channel.basicConsume(queue, false, args, consumer);
 			Visage.log.info("Listening for jobs");
 			try {
-				while (true) {
+				while (run) {
 					try {
 						Delivery delivery = consumer.nextDelivery();
 						if (Visage.debug) Visage.log.finer("Received job, passing on to render thread");
@@ -129,14 +123,27 @@ public class VisageSlave extends Thread {
 						break;
 					}
 				}
+			} catch (ShutdownSignalException e) {
+			} catch (Exception e) {
+				Visage.log.log(Level.SEVERE, "A fatal error has occurred in the slave run loop.", e);
+			}
+			try {
+				Visage.log.info("Shutting down slave");
 				for (RenderThread rt : threads) {
 					rt.finish();
 				}
+				conn.close(5000);
 			} catch (Exception e) {
-				Visage.log.log(Level.SEVERE, "A fatal error has occurred in the slave run loop.", e);
+				Visage.log.log(Level.SEVERE, "A fatal error has occurred while shutting down the slave.", e);
 			}
 		} catch (Exception e) {
 			Visage.log.log(Level.SEVERE, "A fatal error has occurred while setting up the slave.", e);
 		}
+	}
+
+	@Override
+	public void shutdown() {
+		run = false;
+		interrupt();
 	}
 }

@@ -20,11 +20,12 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 
 public class Visage {
-	public static final String VERSION = "1.0.0";
+	public static final String VERSION = "1.1.0";
 	public static final Formatter logFormat = new VisageFormatter();
 	public static final Logger log = Logger.getLogger("com.gameminers.visage");
 	public static boolean debug, trace;
 	public static boolean ansi;
+	public static VisageRunner runner;
 	public static void main(String[] args) throws Exception {
 		AnsiConsole.systemInstall();
 		Thread.currentThread().setName("Main thread");
@@ -59,11 +60,11 @@ public class Visage {
 			Config conf = ConfigFactory.parseFile(confFile);
 			ansi = conf.getBoolean("ansi");
 			log.info("Starting Visage v"+VERSION+" as a master");
-			new VisageMaster(conf).start();
+			runner = new VisageMaster(conf);
 		} else if (set.has("benchmark")) {
 			ansi = true;
 			log.info("Running a benchmark...");
-			new VisageBenchmark().start();
+			runner = new VisageBenchmark();
 		} else {
 			if (confFile == null) {
 				confFile = new File("conf/slave.conf");
@@ -71,10 +72,18 @@ public class Visage {
 			Config conf = ConfigFactory.parseFile(confFile);
 			ansi = conf.getBoolean("ansi");
 			log.info("Starting Visage v"+VERSION+" as a slave");
-			new VisageSlave(conf).start();
+			runner = new VisageSlave(conf);
 		}
 		if (debug || trace) {
 			log.warning("You have debug and/or trace logging enabled. This will severely impact performance.");
 		}
+		log.info("Press Ctrl+C to shutdown Visage.");
+		runner.start();
+		Runtime.getRuntime().addShutdownHook(new Thread() {
+			@Override
+			public void run() {
+				runner.shutdown();
+			}
+		});
 	}
 }

@@ -7,10 +7,11 @@ import java.util.logging.Level;
 import javax.imageio.ImageIO;
 
 import com.gameminers.visage.Visage;
+import com.gameminers.visage.VisageRunner;
 import com.gameminers.visage.slave.render.PlayerRenderer;
 import com.gameminers.visage.slave.render.Renderer;
 
-public class VisageBenchmark extends Thread {
+public class VisageBenchmark extends Thread implements VisageRunner {
 	private static final long TARGET = 5000000000L;
 	private int num = 1;
 	private NumberFormat format = NumberFormat.getInstance();
@@ -112,6 +113,10 @@ public class VisageBenchmark extends Thread {
 		}
 		total += count;
 		return count;
+	}
+	@Override
+	public void shutdown() {
+		throw new UnsupportedOperationException();
 	}
 
 }

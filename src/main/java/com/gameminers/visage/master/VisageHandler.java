@@ -1,10 +1,12 @@
 package com.gameminers.visage.master;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -21,12 +23,25 @@ import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.spacehq.mc.auth.GameProfile;
 import org.spacehq.mc.auth.GameProfileRepository;
 import org.spacehq.mc.auth.ProfileLookupCallback;
+import org.spacehq.mc.auth.ProfileTexture;
+import org.spacehq.mc.auth.ProfileTextureType;
 import org.spacehq.mc.auth.SessionService;
 import org.spacehq.mc.auth.exception.ProfileNotFoundException;
+import org.spacehq.mc.auth.properties.PropertyMap;
+import org.spacehq.mc.auth.serialize.GameProfileSerializer;
+import org.spacehq.mc.auth.serialize.PropertyMapSerializer;
+import org.spacehq.mc.auth.serialize.UUIDSerializer;
+import org.spacehq.mc.auth.util.URLUtils;
+
+import redis.clients.jedis.Jedis;
 
 import com.gameminers.visage.Visage;
 import com.gameminers.visage.RenderMode;
-import com.google.common.collect.Lists;
+import com.gameminers.visage.util.Profiles;
+import com.google.common.base.Charsets;
+import com.google.common.io.ByteStreams;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 public class VisageHandler extends AbstractHandler {
 	public static final Pattern URL_WITH_MODE_PATTERN = Pattern.compile("^/([A-Za-z]*?)/([A-Za-z0-9_]*|X-Steve|X-Alex)(?:\\.png)?$");
@@ -36,12 +51,21 @@ public class VisageHandler extends AbstractHandler {
 	public static final Pattern DASHLESS_UUID_PATTERN = Pattern.compile("^([A-Fa-f0-9]{8})([A-Fa-f0-9]{4})([A-Fa-f0-9]{4})([A-Fa-f0-9]{4})([A-Fa-f0-9]{12})$");
 	public static final Pattern UUID_PATTERN = Pattern.compile("^[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}$");
 	
+	private static final long ONE_DAY = 1000 * 60 * 60 * 24;
+	private static final long THIRTY_DAYS = ONE_DAY * 30;
+	
 	private final VisageMaster master;
 	private final SessionService ss = new SessionService();
 	private final GameProfileRepository gpr = new GameProfileRepository();
+	private final Gson gson = new GsonBuilder()
+								.registerTypeAdapter(GameProfile.class, new GameProfileSerializer())
+								.registerTypeAdapter(PropertyMap.class, new PropertyMapSerializer())
+								.registerTypeAdapter(UUID.class, new UUIDSerializer())
+								.create();
 	
 	private final boolean cacheHeader, slaveHeader, reportExceptions, usernames;
-	private final int supersampling, minSize, defaultSize, maxSize, maxAttempts;
+	private final int supersampling, minSize, defaultSize, maxSize, maxAttempts, granularity;
+	private final long resolverTtlMillis, skinTtlMillis;
 	private final EnumSet<RenderMode> allowedModes = EnumSet.noneOf(RenderMode.class);
 	private final String allowedModesS;
 	
@@ -63,6 +87,9 @@ public class VisageHandler extends AbstractHandler {
 		defaultSize = master.config.getInt("render.default-size");
 		maxSize = master.config.getInt("render.max-size");
 		maxAttempts = master.config.getInt("render.tries");
+		granularity = master.config.getInt("render.size-granularity");
+		resolverTtlMillis = master.config.getDuration("redis.resolver-ttl", TimeUnit.MILLISECONDS);
+		skinTtlMillis = master.config.getDuration("redis.skin-ttl", TimeUnit.MILLISECONDS);
 		List<String> modes = master.config.getStringList("modes");
 		for (String s : modes) {
 			try {
@@ -80,7 +107,7 @@ public class VisageHandler extends AbstractHandler {
 		int width = defaultSize;
 		RenderMode mode = RenderMode.PLAYER;
 		String subject;
-		final List<String> missed = Lists.newArrayList("skin", "render"); // TODO
+		final List<String> missed = cacheHeader ? new ArrayList<String>() : null;
 		
 		// XXX Regex is probably a slow (and somewhat confusing) way to do this
 		Matcher uwsam = URL_WITH_SIZE_AND_MODE_PATTERN.matcher(target);
@@ -137,42 +164,48 @@ public class VisageHandler extends AbstractHandler {
 					if (usernames) {
 						Matcher username = USERNAME_PATTERN.matcher(subject);
 						if (username.matches()) {
-							if (master.cache.hasUsername(subject)) {
-								uuid = master.cache.getUUID(subject);
-							} else {
-								final Object[] result = new Object[1];
-								gpr.findProfilesByNames(new String[] {subject}, new ProfileLookupCallback() {
-									
-									@Override
-									public void onProfileLookupSucceeded(GameProfile profile) {
-										result[0] = profile.getId();
-									}
-									
-									@Override
-									public void onProfileLookupFailed(GameProfile profile, Exception e) {
-										result[0] = e;
-									}
-								});
-								if (result[0] == null || result[0] instanceof ProfileNotFoundException) {
-									response.sendError(400, "Could not find a player named '"+subject+"'");
-									return;
-								} else if (result[0] instanceof Exception) {
-									Exception e = (Exception) result[0];
-									Visage.log.log(Level.WARNING, "An error occurred while looking up a player name", e);
-									if (reportExceptions) {
-										response.setContentType("text/plain");
-										e.printStackTrace(response.getWriter());
-										response.setStatus(500);
-										response.flushBuffer();
+							try (Jedis j = master.getResolverJedis();) {
+								String resp = j.get(subject);
+								if (resp != null) {
+									uuid = UUID.fromString(resp);
+								} else {
+									if (cacheHeader) missed.add("username");
+									final Object[] result = new Object[1];
+									gpr.findProfilesByNames(new String[] {subject}, new ProfileLookupCallback() {
+										
+										@Override
+										public void onProfileLookupSucceeded(GameProfile profile) {
+											result[0] = profile.getId();
+										}
+										
+										@Override
+										public void onProfileLookupFailed(GameProfile profile, Exception e) {
+											result[0] = e;
+										}
+									});
+									if (result[0] == null || result[0] instanceof ProfileNotFoundException) {
+										response.sendError(400, "Could not find a player named '"+subject+"'");
+										return;
+									} else if (result[0] instanceof Exception) {
+										Exception e = (Exception) result[0];
+										Visage.log.log(Level.WARNING, "An error occurred while looking up a player name", e);
+										if (reportExceptions) {
+											response.setContentType("text/plain");
+											e.printStackTrace(response.getWriter());
+											response.setStatus(500);
+											response.flushBuffer();
+										} else {
+											response.sendError(500, "Could not render your request");
+										}
+										return;
+									} else if (result[0] instanceof UUID) {
+										uuid = (UUID) result[0];
+										j.set(subject, uuid.toString());
+										j.pexpire(subject, resolverTtlMillis);
 									} else {
 										response.sendError(500, "Could not render your request");
+										return;
 									}
-									return;
-								} else if (result[0] instanceof UUID) {
-									uuid = (UUID) result[0];
-								} else {
-									response.sendError(500, "Could not render your request");
-									return;
 								}
 							}
 						} else {
@@ -191,6 +224,8 @@ public class VisageHandler extends AbstractHandler {
 			response.sendError(500, "Could not render your request");
 		}
 		
+		width = Math.round(width / (float) granularity)*granularity;
+		
 		int height = width;
 		
 		width *= supersampling;
@@ -198,32 +233,62 @@ public class VisageHandler extends AbstractHandler {
 		if (mode == RenderMode.PLAYER) {
 			width = (int)Math.ceil(width * 0.625f);
 		}
-		final UUID uuidF = uuid;
-		final String subjectF = subject;
-		GameProfile profile;
-		try {
-			profile = master.cache.getProfile(uuid, new Callable<GameProfile>() {
-				
-				@Override
-				public GameProfile call() throws Exception {
-					if (uuidF.version() == 8) {
-						return new GameProfile(uuidF, subjectF.substring(2));
-					}
-					missed.add("profile");
-					GameProfile prof = new GameProfile(uuidF, null);
-					return ss.fillProfileProperties(prof);
+		GameProfile profile = new GameProfile(uuid, "<unknown>");
+		byte[] skin;
+		try (Jedis sj = master.getSkinJedis()) {
+			String resp = sj.get(uuid.toString()+":profile");
+			byte[] skinResp = sj.get((uuid.toString()+":skin").getBytes(Charsets.UTF_8));
+			if (resp != null) {
+				profile = gson.fromJson(resp, GameProfile.class);
+			} else {
+				if (uuid.version() == 8) {
+					profile = new GameProfile(uuid, subject.substring(2));
+				} else {
+					if (cacheHeader) missed.add("profile");
+					profile = ss.fillProfileProperties(profile);
+					sj.set(uuid.toString()+":profile", gson.toJson(profile));
+					sj.pexpire(uuid.toString()+":profile", skinTtlMillis);
 				}
-			});
-		} catch (ExecutionException e) {
+			}
+			if (skinResp != null && skinResp.length > 3) {
+				skin = skinResp;
+			} else {
+				if (cacheHeader) missed.add("skin");
+				Map<ProfileTextureType, ProfileTexture> tex = ss.getTextures(profile, false);
+				if (tex.containsKey(ProfileTextureType.SKIN)) {
+					ProfileTexture skinTex = tex.get(ProfileTextureType.SKIN);
+					try (InputStream in = URLUtils.constantURL(skinTex.getUrl()).openStream()) {
+						skin = ByteStreams.toByteArray(in);
+					}
+				} else {
+					if (Profiles.isSlim(profile)) {
+						skin = master.alex;
+					} else {
+						skin = master.steve;
+					}
+				}
+				sj.set((uuid.toString()+":skin").getBytes(Charsets.UTF_8), skin);
+				sj.pexpire(uuid.toString()+":skin", skinTtlMillis);
+			}
+		} catch (Exception e) {
 			Visage.log.log(Level.WARNING, "An error occurred while resolving texture data", e);
 			if (reportExceptions) {
 				response.setContentType("text/plain");
 				e.printStackTrace(response.getWriter());
 				response.setStatus(500);
 				response.flushBuffer();
+				return;
 			} else {
-				response.sendError(500, "Could not render your request");
+				if (Profiles.isSlim(profile)) {
+					skin = master.alex;
+				} else {
+					skin = master.steve;
+				}
 			}
+		}
+		
+		if (mode == RenderMode.SKIN) {
+			write(response, missed, skin, "none");
 			return;
 		}
 		
@@ -233,7 +298,7 @@ public class VisageHandler extends AbstractHandler {
 		while (attempts < maxAttempts) {
 			attempts++;
 			try {
-				resp = master.renderRpc(mode, width, height, supersampling, profile, request.getParameterMap());
+				resp = master.renderRpc(mode, width, height, supersampling, profile, skin, request.getParameterMap());
 			} catch (Exception e) {
 				ex = e;
 				continue;
@@ -241,18 +306,7 @@ public class VisageHandler extends AbstractHandler {
 			if (resp == null) {
 				continue;
 			}
-			if (slaveHeader) {
-				response.setHeader("X-Visage-Slave", resp.slave);
-			}
-			response.setContentType("image/png");
-			response.setContentLength(resp.png.length);
-			if (cacheHeader) {
-				response.setHeader("X-Visage-Cache-Miss", Strings.join(missed, ", "));
-			}
-			response.getOutputStream().write(resp.png);
-			response.getOutputStream().flush();
-			response.setStatus(200);
-			response.flushBuffer();
+			write(response, missed, resp.png, resp.slave);
 			return;
 		}
 		if (ex != null) {
@@ -272,5 +326,23 @@ public class VisageHandler extends AbstractHandler {
 			response.setStatus(500);
 			response.flushBuffer();
 		}
+	}
+	private void write(HttpServletResponse response, List<String> missed, byte[] png, String slave) throws IOException {
+		if (slaveHeader) {
+			response.setHeader("X-Visage-Slave", slave);
+		}
+		response.setContentType("image/png");
+		response.setContentLength(png.length);
+		if (cacheHeader) {
+			if (missed.isEmpty()) {
+				response.setHeader("X-Visage-Cache-Miss", "none");
+			} else {
+				response.setHeader("X-Visage-Cache-Miss", Strings.join(missed, ", "));
+			}
+		}
+		response.getOutputStream().write(png);
+		response.getOutputStream().flush();
+		response.setStatus(200);
+		response.flushBuffer();
 	}
 }

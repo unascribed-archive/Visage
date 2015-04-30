@@ -28,7 +28,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.net.InetSocketAddress;
 import java.util.List;
@@ -45,19 +44,24 @@ import org.eclipse.jetty.server.handler.ResourceHandler;
 import org.eclipse.jetty.server.handler.gzip.GzipHandler;
 import org.eclipse.jetty.util.log.Log;
 import org.spacehq.mc.auth.GameProfile;
-import org.spacehq.mc.auth.properties.Property;
+import org.spacehq.mc.auth.util.URLUtils;
+
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
 
 import com.gameminers.visage.Visage;
 import com.gameminers.visage.RenderMode;
-import com.gameminers.visage.master.cache.CacheManager;
-import com.gameminers.visage.master.cache.GuavaBasicCacheManager;
+import com.gameminers.visage.VisageRunner;
 import com.gameminers.visage.master.exception.NoSlavesAvailableException;
 import com.gameminers.visage.master.exception.RenderFailedException;
 import com.gameminers.visage.master.glue.HeaderHandler;
 import com.gameminers.visage.master.glue.LogShim;
 import com.gameminers.visage.slave.VisageSlave;
+import com.gameminers.visage.util.Profiles;
 import com.google.common.collect.Maps;
 import com.google.common.io.ByteStreams;
+import com.google.common.io.Closer;
 import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
@@ -66,15 +70,36 @@ import com.rabbitmq.client.QueueingConsumer;
 import com.rabbitmq.client.QueueingConsumer.Delivery;
 import com.typesafe.config.Config;
 
-public class VisageMaster extends Thread {
+public class VisageMaster extends Thread implements VisageRunner {
 	public VisageSlave fallback;
 	public Config config;
 	public Connection conn;
 	public Channel channel;
-	public CacheManager cache;
+	public byte[] steve, alex;
+	private JedisPool pool;
+	private int resolverNum, skinNum;
+	private String password;
+	private boolean run = true;
 	public VisageMaster(Config config) {
 		super("Master thread");
 		this.config = config;
+	}
+	public Jedis getResolverJedis() {
+		Jedis j = getJedis();
+		j.select(resolverNum);
+		return j;
+	}
+	public Jedis getSkinJedis() {
+		Jedis j = getJedis();
+		j.select(skinNum);
+		return j;
+	}
+	public Jedis getJedis() {
+		Jedis j = pool.getResource();
+		if (password != null) {
+			j.auth(password);
+		}
+		return j;
 	}
 	@Override
 	public void run() {
@@ -90,13 +115,6 @@ public class VisageMaster extends Thread {
 			if (max < (1000*1000*1000)) {
 				Visage.log.warning("The heap size (Xmx) is less than one gigabyte; it is recommended to run Visage with a gigabyte or more. Use -Xms1G and -Xmx1G to do this.");
 			}
-			Visage.log.info("Initializing cache");
-			// TODO
-			//if (!config.getBoolean("cache.enabled")) {
-				cache = new GuavaBasicCacheManager();
-			//} else {
-			//	cache = new JCSCacheManager(config.getConfig("cache"));
-			//}
 			Visage.log.info("Setting up Jetty");
 			Server server = new Server(new InetSocketAddress(config.getString("http.bind"), config.getInt("http.port")));
 			
@@ -125,6 +143,21 @@ public class VisageMaster extends Thread {
 			gzip.setHandler(new HeaderHandler("X-Powered-By", poweredBy, resource));
 			server.setHandler(gzip);
 			
+			String redisHost = config.getString("redis.host");
+			int redisPort = config.getInt("redis.port");
+			Visage.log.info("Connecting to Redis at "+redisHost+":"+redisPort);
+			resolverNum = config.getInt("redis.resolver-db");
+			skinNum = config.getInt("redis.skin-db");
+			JedisPoolConfig jpc = new JedisPoolConfig();
+			jpc.setMaxIdle(config.getInt("redis.max-idle-connections"));
+			jpc.setMaxTotal(config.getInt("redis.max-total-connections"));
+			jpc.setMinIdle(config.getInt("redis.min-idle-connections"));
+			if (config.hasPath("redis.password")) {
+				password = config.getString("redis.password");
+			}
+			pool = new JedisPool(jpc, redisHost, redisPort);
+			
+			
 			Visage.log.info("Connecting to RabbitMQ at "+config.getString("rabbitmq.host")+":"+config.getInt("rabbitmq.port"));
 			ConnectionFactory factory = new ConnectionFactory();
 			factory.setHost(config.getString("rabbitmq.host"));
@@ -134,6 +167,12 @@ public class VisageMaster extends Thread {
 				factory.setPassword(config.getString("rabbitmq.password"));
 			}
 			String queue = config.getString("rabbitmq.queue");
+			
+			if (Visage.debug) Visage.log.finer("Downloading default skins");
+			Closer closer = Closer.create();
+			steve = ByteStreams.toByteArray(closer.register(URLUtils.constantURL("https://minecraft.net/images/steve.png").openStream()));
+			alex = ByteStreams.toByteArray(closer.register(URLUtils.constantURL("https://minecraft.net/images/alex.png").openStream()));
+			closer.close();
 			
 			conn = factory.newConnection();
 			channel = conn.createChannel();
@@ -155,7 +194,7 @@ public class VisageMaster extends Thread {
 			server.start();
 			Visage.log.info("Listening for finished jobs");
 			try {
-				while (true) {
+				while (run) {
 					Delivery delivery = consumer.nextDelivery();
 					if (Visage.trace) Visage.log.finest("Got delivery");
 					try {
@@ -182,6 +221,14 @@ public class VisageMaster extends Thread {
 				Visage.log.log(Level.SEVERE, "An unexpected error occured in the master run loop.", e);
 				System.exit(2);
 			}
+			try {
+				Visage.log.info("Shutting down master");
+				server.stop();
+				pool.destroy();
+				conn.close(5000);
+			} catch (Exception e) {
+				Visage.log.log(Level.SEVERE, "A fatal error has occurred while shutting down the master.", e);
+			}
 		} catch (Exception e) {
 			Visage.log.log(Level.SEVERE, "An unexpected error occured while initializing the master.", e);
 			System.exit(1);
@@ -191,7 +238,8 @@ public class VisageMaster extends Thread {
 	private QueueingConsumer consumer;
 	private Map<String, Runnable> queuedJobs = Maps.newHashMap();
 	private Map<String, byte[]> responses = Maps.newHashMap();
-	public RenderResponse renderRpc(RenderMode mode, int width, int height, int supersampling, GameProfile profile, Map<String, String[]> switches) throws RenderFailedException, NoSlavesAvailableException {
+	public RenderResponse renderRpc(RenderMode mode, int width, int height, int supersampling, GameProfile profile, byte[] skin, Map<String, String[]> switches) throws RenderFailedException, NoSlavesAvailableException {
+		if (mode == RenderMode.SKIN) return null;
 		try {
 			byte[] response = null;
 			String corrId = UUID.randomUUID().toString();
@@ -203,15 +251,17 @@ public class VisageMaster extends Thread {
 			dos.writeShort(width);
 			dos.writeShort(height);
 			dos.writeByte(supersampling);
-			writeGameProfile(dos, profile);
+			Profiles.writeGameProfile(dos, profile);
 			dos.writeShort(switches.size());
 			for (Entry<String, String[]> en : switches.entrySet()) {
 				dos.writeUTF(en.getKey());
-				dos.writeShort(en.getValue().length);
+				dos.writeByte(en.getValue().length);
 				for (String s : en.getValue()) {
 					dos.writeUTF(s);
 				}
 			}
+			dos.writeInt(skin.length);
+			dos.write(skin);
 			dos.flush();
 			defos.finish();
 			channel.basicPublish("", config.getString("rabbitmq.queue"), props, baos.toByteArray());
@@ -268,30 +318,6 @@ public class VisageMaster extends Thread {
 		}
 	}
 	
-	private void writeGameProfile(DataOutputStream data, GameProfile profile) throws IOException {
-		if (profile == null) {
-			data.writeBoolean(false);
-			return;
-		}
-		data.writeBoolean(true);
-		data.writeLong(profile.getId().getMostSignificantBits());
-		data.writeLong(profile.getId().getLeastSignificantBits());
-		data.writeUTF(profile.getName());
-		data.writeShort(profile.getProperties().size());
-		for (Entry<String, Property> en : profile.getProperties().entrySet()) {
-			data.writeBoolean(en.getValue().hasSignature());
-			if (en.getValue().hasSignature()) {
-				data.writeUTF(en.getValue().getName());
-				data.writeUTF(en.getValue().getValue());
-				data.writeUTF(en.getValue().getSignature());
-			} else {
-				data.writeUTF(en.getValue().getName());
-				data.writeUTF(en.getValue().getValue());
-			}
-			data.writeUTF(en.getKey());
-		}
-	}
-	
 	/**
 	 * <a href="http://stackoverflow.com/questions/3758606/how-to-convert-byte-size-into-human-readable-format-in-java">Source</a>
 	 * @author aioobe
@@ -302,6 +328,11 @@ public class VisageMaster extends Thread {
 	    int exp = (int) (Math.log(bytes) / Math.log(unit));
 	    String pre = (si ? "kMGTPE" : "KMGTPE").charAt(exp-1) + (si ? "" : "i");
 	    return String.format("%.1f %sB", bytes / Math.pow(unit, exp), pre);
+	}
+	@Override
+	public void shutdown() {
+		run = false;
+		interrupt();
 	}
 
 }

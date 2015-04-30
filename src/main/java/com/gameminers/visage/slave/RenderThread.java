@@ -9,28 +9,21 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Map;
-import java.util.UUID;
 import java.util.logging.Level;
 import java.util.zip.InflaterInputStream;
 
 import javax.imageio.ImageIO;
 
 import org.spacehq.mc.auth.GameProfile;
-import org.spacehq.mc.auth.ProfileTexture;
-import org.spacehq.mc.auth.ProfileTextureType;
-import org.spacehq.mc.auth.properties.Property;
-import org.spacehq.mc.auth.util.Base64;
 
 import com.gameminers.visage.Visage;
 import com.gameminers.visage.RenderMode;
 import com.gameminers.visage.slave.render.Renderer;
-import com.gameminers.visage.util.UUIDs;
-import com.google.gson.JsonObject;
+import com.gameminers.visage.util.Profiles;
+import com.google.common.collect.Maps;
 import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.QueueingConsumer.Delivery;
 
@@ -105,9 +98,22 @@ public class RenderThread extends Thread {
 		int width = data.readUnsignedShort();
 		int height = data.readUnsignedShort();
 		int supersampling = data.readUnsignedByte();
-		GameProfile profile = readGameProfile(data);
+		GameProfile profile = Profiles.readGameProfile(data);
+		Map<String, String[]> params = Maps.newHashMap();
+		int len = data.readUnsignedShort();
+		for (int i = 0; i < len; i++) {
+			String key = data.readUTF();
+			String[] val = new String[data.readUnsignedByte()];
+			for (int v = 0; v < val.length; v++) {
+				val[v] = data.readUTF();
+			}
+			params.put(key, val);
+		}
+		byte[] skinData = new byte[data.readInt()];
+		data.readFully(skinData);
+		BufferedImage skin = ImageIO.read(new ByteArrayInputStream(skinData));
 		if (Visage.debug) Visage.log.finer("Rendering a "+width+"x"+height+" "+mode.name().toLowerCase()+" ("+supersampling+"x supersampling) for "+(profile == null ? "null" : profile.getName()));
-		byte[] pngBys = draw(mode, width, height, supersampling, profile);
+		byte[] pngBys = draw(mode, width, height, supersampling, profile, skin, params);
 		if (Visage.trace) Visage.log.finest("Got png bytes");
 		parent.channel.basicPublish("", props.getReplyTo(), replyProps, buildResponse(0, pngBys));
 		if (Visage.trace) Visage.log.finest("Published response");
@@ -126,17 +132,10 @@ public class RenderThread extends Thread {
 		return resp;
 	}
 
-	public byte[] draw(RenderMode mode, int width, int height, int supersampling, GameProfile profile) throws Exception {
-		Map<ProfileTextureType, ProfileTexture> tex = parent.session.getTextures(profile, false);
-		boolean slim = isSlim(profile);
-		BufferedImage skin;
+	public byte[] draw(RenderMode mode, int width, int height, int supersampling, GameProfile profile, BufferedImage skin, Map<String, String[]> params) throws Exception {
+		boolean slim = Profiles.isSlim(profile);
 		//BufferedImage cape;
 		BufferedImage out;
-		if (tex.containsKey(ProfileTextureType.SKIN)) {
-			skin = ImageIO.read(new URL(tex.get(ProfileTextureType.SKIN).getUrl()));
-		} else {
-			skin = slim ? parent.alex : parent.steve;
-		}
 		if (skin.getHeight() == 32) {
 			if (Visage.debug) Visage.log.finer("Skin is legacy; painting onto new-style canvas");
 			BufferedImage canvas = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
@@ -223,44 +222,6 @@ public class RenderThread extends Thread {
 		return out;
 	}
 	
-	private boolean isSlim(GameProfile profile) throws IOException {
-		if (profile.getProperties().containsKey("textures")) {
-			String texJson = new String(Base64.decode(profile.getProperties().get("textures").getValue().getBytes(StandardCharsets.UTF_8)));
-			JsonObject obj = parent.gson.fromJson(texJson, JsonObject.class);
-			JsonObject tex = obj.getAsJsonObject("textures");
-			if (tex.has("SKIN")) {
-				JsonObject skin = tex.getAsJsonObject("SKIN");
-				if (skin.has("metadata")) {
-					if ("slim".equals(skin.getAsJsonObject("metadata").get("model").getAsString()))
-						return true;
-				}
-				return false;
-			}
-		}
-		return UUIDs.isAlex(profile.getId());
-	}
-
-	private GameProfile readGameProfile(DataInputStream data) throws IOException {
-		boolean present = data.readBoolean();
-		if (!present)
-			return new GameProfile(new UUID(0, 0), "<unknown>");
-		UUID uuid = new UUID(data.readLong(), data.readLong());
-		String name = data.readUTF();
-		GameProfile profile = new GameProfile(uuid, name);
-		int len = data.readUnsignedShort();
-		for (int i = 0; i < len; i++) {
-			boolean signed = data.readBoolean();
-			Property prop;
-			if (signed) {
-				prop = new Property(data.readUTF(), data.readUTF(), data.readUTF());
-			} else {
-				prop = new Property(data.readUTF(), data.readUTF());
-			}
-			profile.getProperties().put(data.readUTF(), prop);
-		}
-		return profile;
-	}
-
 	public void finish() {
 		run = false;
 		interrupt();
