@@ -101,46 +101,50 @@ public class VisageBenchmark extends Thread implements VisageRunner {
 		int csize = size*supersampling;
 		Visage.log.info("--");
 		Visage.log.info("Starting benchmark #"+(num++)+" - "+supersampling+"x supersampling, "+size+"x"+size+" result, "+csize+"x"+csize+" canvas, "+(readpixels ? "with" : "without")+" readpixels)...");
-		Visage.log.info("Setting up renderer...");
-		Renderer renderer = new PlayerRenderer();
-		renderer.init(supersampling);
-		renderer.setSkin(skin);
-		int count = 0;
-		long renderTime = 0;
-		long readTime = 0;
-		Visage.log.info("Taking out the trash...");
-		System.gc();
-		Visage.log.info("Rendering...");
-		long start = System.nanoTime();
-		while (System.nanoTime()-start < TARGET) {
-			long renderStart = System.nanoTime();
-			renderer.render(csize, csize);
-			renderTime += System.nanoTime()-renderStart;
-			if (readpixels) {
-				long readStart = System.nanoTime();
-				renderer.readPixels(csize, csize);
-				readTime += System.nanoTime()-readStart;
+		try {
+			Visage.log.info("Setting up renderer...");
+			Renderer renderer = new PlayerRenderer();
+			renderer.init(supersampling);
+			renderer.setSkin(skin);
+			int count = 0;
+			long renderTime = 0;
+			long readTime = 0;
+			Visage.log.info("Taking out the trash...");
+			System.gc();
+			Visage.log.info("Rendering...");
+			long start = System.nanoTime();
+			while (System.nanoTime()-start < TARGET) {
+				long renderStart = System.nanoTime();
+				renderer.render(csize, csize);
+				renderTime += System.nanoTime()-renderStart;
+				if (readpixels) {
+					long readStart = System.nanoTime();
+					renderer.readPixels(csize, csize);
+					readTime += System.nanoTime()-readStart;
+				}
+				count++;
 			}
-			count++;
+			long runtime = System.nanoTime()-start;
+			Visage.log.info("Cleaning up...");
+			renderer.destroy();
+			System.gc();
+			double runtimeS = (runtime/1000000000D);
+			double renderTimeM = ((renderTime/(double)count)/1000000D);
+			Visage.log.fine("Rendered "+count+" players in "+format.format(runtimeS)+" seconds");
+			Visage.log.fine("Avg. "+format.format(renderTimeM)+" millis per render");
+			if (readpixels) {
+				double readTimeM = ((readTime/(double)count)/1000000D);
+				Visage.log.fine("Avg. "+format.format(readTimeM)+" millis per readPixels");
+			}
+			total += count;
+			return count;
+		} catch (Exception e) {
+			Visage.log.log(Level.SEVERE, "An unexpected error occurred", e);
+			return 0;
 		}
-		long runtime = System.nanoTime()-start;
-		Visage.log.info("Cleaning up...");
-		renderer.destroy();
-		System.gc();
-		double runtimeS = (runtime/1000000000D);
-		double renderTimeM = ((renderTime/(double)count)/1000000D);
-		Visage.log.fine("Rendered "+count+" players in "+format.format(runtimeS)+" seconds");
-		Visage.log.fine("Avg. "+format.format(renderTimeM)+" millis per render");
-		if (readpixels) {
-			double readTimeM = ((readTime/(double)count)/1000000D);
-			Visage.log.fine("Avg. "+format.format(readTimeM)+" millis per readPixels");
-		}
-		total += count;
-		return count;
 	}
 	@Override
 	public void shutdown() {
-		throw new UnsupportedOperationException();
 	}
 
 }
