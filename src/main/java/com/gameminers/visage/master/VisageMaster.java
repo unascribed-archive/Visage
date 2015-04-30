@@ -219,6 +219,7 @@ public class VisageMaster extends Thread implements VisageRunner {
 						Visage.log.log(Level.WARNING, "An unexpected error occured while attempting to process a response.", e);
 					}
 				}
+			} catch (InterruptedException e) {
 			} catch (Exception e) {
 				Visage.log.log(Level.SEVERE, "An unexpected error occured in the master run loop.", e);
 				System.exit(2);
