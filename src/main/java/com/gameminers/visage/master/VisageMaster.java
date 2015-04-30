@@ -1,5 +1,5 @@
 /*
- * Visage2
+ * Visage
  * Copyright (c) 2015, Aesen Vismea <aesen@gameminers.com>
  *
  * The MIT License
