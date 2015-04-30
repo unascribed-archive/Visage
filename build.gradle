@@ -1,10 +1,11 @@
 plugins {
     id 'java'
-
+	id 'application'
+	
     id 'eclipse'
     id 'idea'
 
-    id 'com.stehno.natives' version '0.2.1'
+    id 'com.stehno.natives' version '0.2.3'
     id 'com.github.hierynomus.license' version '0.11.0'
 }
 
@@ -14,6 +15,7 @@ defaultTasks 'clean', 'licenseFormat', 'build'
 group = 'com.gameminers'
 version = '1.1.0-SNAPSHOT'
 archivesBaseName = 'Visage'
+mainClassName = 'com.gameminers.visage.Visage'
 
 sourceCompatibility = 1.7
 targetCompatibility = 1.7
@@ -56,6 +58,30 @@ natives {
     jars = configurations.compile.collectMany {
         it.name.contains('natives') ? [it.name] : []
     }
+}
+
+run {
+	systemProperty 'java.library.path', file('build/natives/' + com.stehno.gradle.natives.Platform.current().os)
+}
+
+startScripts {
+	defaultJvmOpts = [ '-Djava.library.path=./lib/natives/' ]
+	classpath = classpath.filter {
+		!it.name.contains('natives')
+	}
+}
+applicationDistribution.from("conf") {
+    into "conf"
+}
+applicationDistribution.from("www") {
+	into "www"
+}
+applicationDistribution.from(unpackNatives) {
+	from fileTree('build/natives').files
+	into 'lib/natives'
+}
+applicationDistribution.exclude {
+	it.name.contains('natives') && it.name.endsWith('.jar')
 }
 
 // License header formatting
