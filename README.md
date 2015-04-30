@@ -1,52 +1,67 @@
 # Visage
-An avatar service based on a master/slave system.
+Visage is a new open source Minecraft avatar service, inspired by, and made by the same person as,
+[Lapitar](https://github.com/LapisBlue/Lapitar). It provides both 2D and 3D avatars with an
+extremely simple API.
 
-# A hosted Visage server is now available at https://visage.gameminers.com/ 
+## Overview
+Visage is written in Java 7, and uses Jetty and LWJGL2 as backends for HTTP and rendering, respectively. It also
+requires a RabbitMQ server for job distribution, and a Redis server for caching. It is based on OpenGL1.2, and
+uses VBOs to speed up rendering.
 
-## Why did you split this off from Lapis?
-I'm not directly involved with Sponge or Lapis anymore, and the 2.0.0 rewrite was turning out to be all my
-code. Nobody in Lapis really knows GL except me (Aesen), and as such all the core code was going to be mine.
+Visage is tested on Ubuntu 14.10 with the Mesa open-source drivers. Proprietary drivers are not supported, but
+will probably work.
+**Windows is completely unsupported. Use it at your own peril. Issues reported that are specific to Windows over a certain complexity are likely to be ignored.**
 
-Since this project is ultimately mine anyway, and I'm going to put it on my hardware, I figured a rename and
-move was in order. The project is still open source, still MIT licensed, and contributions are still very
-welcome. I'm just not using the Lapis name anymore.
+## For Website Designers
+There is an [official hosted Visage site][1] with full API documentation.
+This source repository is for developers looking to help out and sysadmins looking to run their own Visage servers.
 
-## Compiling
-`./gradlew`. Only Linux is confirmed to work. You can try your luck on Windows.
+## For Users
+If you want a avatar to use on other people's sites, you can go over to the [official Visage site][1] and
+use the Quick Render feature to generate a maximum-resolution render of your skin and download it to your
+computer.
 
-## Benchmarking
-Visage includes a simple benchmark to help see how well it will work on a given system. You can invoke it by
-running `java -jar Visage.jar --benchmark`.
+## For Sysadmins
+A Visage master can be run rather simply, but first you need RabbitMQ and Redis. For Debian/Ubuntu, this is a
+simple `sudo apt install rabbitmq-server redis-server` away. *The redis-server package in Wheezy is too old. Install it from backports.*
+The RabbitMQ server should be accessible by any machines you plan on running as slaves, but the Redis server 
+can be fully locked down.
 
-## Setup
+Please note that the default `conf/master.conf` file is set up for development use, and has some rather low TTLs and
+includes a lot of information in the headers. You should open the file and tweak the parameters to your particular
+use-case.
 
-**Everything in this section is just a basic spec for Aesen's reference.** It is subject to drastic change.
+You can download a ready-to-run Visage distribution at [the GitHub releases page](https://github.com/AesenV/Visage/releases).
+Extract it wherever, `cd` to the directory, and run `./bin/Visage --master`. **Windows is unsupported. Use it at your own peril.**
 
-### Prerequisites
+Slaves just need to be pointed at your RabbitMQ server, which brings us to...
 
- - RabbitMQ
+## For Hardware Donors
+A Visage slave can be connected to an existing Visage master by simply editing the `conf/slave.conf` file to point to the
+RabbitMQ server the sysadmin gives you.
 
-### Master
-All Visage systems need a master instance. This handles all frontend requests and manages the delegation of jobs, and
-also manages the cache.
+You can download a ready-to-run Visage distribution at [the GitHub releases page](https://github.com/AesenV/Visage/releases).
+Extract it wherever, `cd` to the directory, and run `./bin/Visage`. Slave mode is the default.
+**Windows is unsupported. Use it at your own peril.**
 
-A master can also offer a fallback slave for when no other slaves are available. It defaults to software rendering. As
-you can guess, this fallback is slow and undesirable, but helps ensure high uptime.
+If you want to get an idea of how well Visage will run on your hardware, you can run `./bin/Visage --benchmark`.
+It will run a series of 24 benchmarks with varying render parameters; all of the renders are players with lighting,
+shadows, and all secondary layers enabled. It uses a [test skin](https://github.com/AesenV/Visage/blob/master/src/main/resources/test_skin.png)
+that wasn't chosen for any particular reason.
+After it finishes, it will give you a number. Here's the results of some benchmarks:
 
-#### Configuration
-Edit the `conf/master.conf` file. It is self-documenting.
+ * Kubuntu 14.10 w/ Radeon R9 290X on the open-source Mesa drivers, running a KDE Plasma 5 desktop under a light load: **3307.7617**
+ * Xubuntu 14.10 w/ GeForce GTX 550 Ti on the proprietary drivers, running an Xfce 4.11 desktop under virtually no load: **5688.4517**
 
-#### Running
-Run `java -jar Visage.jar --master`. It will pick up the `master.conf` in the `conf` directory and use it.  
-If you need to use a different config file, use the `--config` option.
+## For Developers
+Visage is open source, and as such, if you find problems, you can submit Pull Requests or Merge Requests to
+fix said problems. The code style is basically Sun conventions with tabs instead of spaces. To compile
+Visage, just run `./gradlew distZip`. A distribution zip with all necessary files will be created in
+`build/distributions/Visage-X.Y.Z-SNAPSHOT.zip`.
 
-### Slave
-Visage systems can optionally have a (theoretically) infinite number of slaves. A good example of a slave is a computer
-that has a GPU, but is on an unreliable Internet connection. Slaves can be run with or without hardware acceleration.
+## Wishlist
+ * Don't explode into flaming death when running under Xdummy
+ * Update to LWJGL3
+ * Stop using Pbuffers and use FBOs
 
-#### Configuration
-Edit the `conf/slave.conf` file. It is self-documenting.
-
-#### Running
-Run `java -jar Visage.jar`. Slave mode is the default. It will pick up the `slave.conf` in the `conf` directory and use it.  
-If you need to use a different config file, use the `--config` option.
+[1]: https://visage.gameminers.com/
