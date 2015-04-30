@@ -246,7 +246,9 @@ public class VisageHandler extends AbstractHandler {
 			}
 			response.setContentType("image/png");
 			response.setContentLength(resp.png.length);
-			response.setHeader("X-Visage-Cache-Miss", Strings.join(missed, ", "));
+			if (cacheHeader) {
+				response.setHeader("X-Visage-Cache-Miss", Strings.join(missed, ", "));
+			}
 			response.getOutputStream().write(resp.png);
 			response.getOutputStream().flush();
 			response.setStatus(200);
