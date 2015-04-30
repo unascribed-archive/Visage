@@ -138,7 +138,7 @@ public class VisageMaster extends Thread implements VisageRunner {
 			resource.setHandler(new VisageHandler(this));
 	
 			if (!"/dev/null".equals(config.getString("log"))) {
-				new File(config.getString("log")).mkdirs();
+				new File(config.getString("log")).getParentFile().mkdirs();
 				server.setRequestLog(new AsyncNCSARequestLog(config.getString("log")));
 			}
 			GzipHandler gzip = new GzipHandler();
