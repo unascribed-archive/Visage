@@ -164,6 +164,7 @@ public class VisageMaster extends Thread implements VisageRunner {
 			ConnectionFactory factory = new ConnectionFactory();
 			factory.setHost(config.getString("rabbitmq.host"));
 			factory.setPort(config.getInt("rabbitmq.port"));
+			factory.setRequestedHeartbeat(10);
 			if (config.hasPath("rabbitmq.user")) {
 				factory.setUsername(config.getString("rabbitmq.user"));
 				factory.setPassword(config.getString("rabbitmq.password"));

@@ -106,6 +106,7 @@ public class VisageSlave extends Thread implements VisageRunner {
 			ConnectionFactory factory = new ConnectionFactory();
 			factory.setHost(config.getString("rabbitmq.host"));
 			factory.setPort(config.getInt("rabbitmq.port"));
+			factory.setRequestedHeartbeat(10);
 			if (config.hasPath("rabbitmq.user")) {
 				if (Visage.debug) Visage.log.finer("Using authentication");
 				factory.setUsername(config.getString("rabbitmq.user"));

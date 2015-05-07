@@ -52,6 +52,7 @@ After it finishes, it will give you a number. Here's the results of some benchma
 
  * Kubuntu 14.10 w/ Radeon R9 290X on the open-source Mesa drivers, running a KDE Plasma 5 desktop under a light load: **3307.7617**
  * Xubuntu 14.10 w/ GeForce GTX 550 Ti on the proprietary drivers, running an Xfce 4.11 desktop under virtually no load: **5688.4517**
+ * Xubuntu 14.04 w/ R9 290X on the open-source Mesa drivers, running an Xfce 4.12 under pretty low load: **6806.3027**
 
 ## For Developers
 Visage is open source, and as such, if you find problems, you can submit Pull Requests or Merge Requests to
