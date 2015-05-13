@@ -216,7 +216,7 @@ public class RenderThread extends Thread {
 	}
 
 	private BufferedImage flipLimb(BufferedImage in) {
-		BufferedImage out = new BufferedImage(in.getWidth(), in.getHeight(), in.getType());
+		BufferedImage out = new BufferedImage(in.getWidth(), in.getHeight(), BufferedImage.TYPE_INT_ARGB);
 		
 		BufferedImage front = flipHorziontally(in.getSubimage(4, 4, 4, 12));
 		BufferedImage back = flipHorziontally(in.getSubimage(12, 4, 4, 12));
@@ -239,7 +239,7 @@ public class RenderThread extends Thread {
 	}
 	
 	private BufferedImage flipHorziontally(BufferedImage in) {
-		BufferedImage out = new BufferedImage(in.getWidth(), in.getHeight(), in.getType());
+		BufferedImage out = new BufferedImage(in.getWidth(), in.getHeight(), BufferedImage.TYPE_INT_ARGB);
 		Graphics2D g = out.createGraphics();
 		g.drawImage(in, 0, 0, in.getWidth(), in.getHeight(), in.getWidth(), 0, 0, in.getHeight(), null);
 		g.dispose();
