@@ -170,6 +170,22 @@ public class RenderThread extends Thread {
 			g.dispose();
 			skin = canvas;
 		}
+		int color = skin.getRGB(32, 8);
+		boolean equal = true;
+		for (int x = 32; x < 64; x++) {
+			for (int y = 0; y < 16; y++) {
+				if (x < 40 && y < 8) continue;
+				if (x > 54 && y < 8) continue;
+				if (skin.getRGB(x, y) != color) {
+					equal = false;
+					break;
+				}
+			}
+		}
+		if (equal) {
+			if (Visage.debug) Visage.log.finer("Skin has solid colored helm, stripping");
+			skin.setRGB(32, 0, 32, 16, new int[32*64], 0, 32);
+		}
 		if (Visage.trace) Visage.log.finest("Got skin");
 		if (Visage.trace) Visage.log.finest(mode.name());
 		switch (mode) {
