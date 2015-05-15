@@ -89,6 +89,7 @@ public class VisageHandler extends AbstractHandler {
 	private final boolean cacheHeader, slaveHeader, reportExceptions, usernames;
 	private final int supersampling, minSize, defaultSize, maxSize, maxAttempts, granularity;
 	private final long resolverTtlMillis, skinTtlMillis;
+	private final String baseUrl;
 	private final EnumSet<RenderMode> allowedModes = EnumSet.noneOf(RenderMode.class);
 	private final String allowedModesS;
 	
@@ -113,6 +114,7 @@ public class VisageHandler extends AbstractHandler {
 		granularity = master.config.getInt("render.size-granularity");
 		resolverTtlMillis = master.config.getDuration("redis.resolver-ttl", TimeUnit.MILLISECONDS);
 		skinTtlMillis = master.config.getDuration("redis.skin-ttl", TimeUnit.MILLISECONDS);
+		baseUrl = master.config.getString("base-url");
 		List<String> modes = master.config.getStringList("modes");
 		for (String s : modes) {
 			try {
@@ -131,7 +133,7 @@ public class VisageHandler extends AbstractHandler {
 		String subject;
 		final List<String> missed = cacheHeader ? new ArrayList<String>() : null;
 		if (target.contains("-")) {
-			response.sendRedirect(target.replace("-", ""));
+			response.sendRedirect(baseUrl+target.replace("-", ""));
 			return;
 		}
 		// XXX Regex is probably a slow (and somewhat confusing) way to do this
@@ -170,15 +172,15 @@ public class VisageHandler extends AbstractHandler {
 		try {
 			if ("PLAYER".equalsIgnoreCase(modeStr)) {
 				height *= 1.625;
-				response.sendRedirect("/full/"+height+"/"+subject);
+				response.sendRedirect(baseUrl+"/full/"+height+"/"+subject);
 				return;
 			} else if ("FULL".equalsIgnoreCase(modeStr)) {
 				width = (int)Math.ceil(width / 1.625f);
 			} else if ("HELM".equalsIgnoreCase(modeStr)) {
-				response.sendRedirect("/face/"+height+"/"+subject);
+				response.sendRedirect(baseUrl+"/face/"+height+"/"+subject);
 				return;
 			} else if ("PORTRAIT".equalsIgnoreCase(modeStr)) {
-				response.sendRedirect("/bust/"+height+"/"+subject);
+				response.sendRedirect(baseUrl+"/bust/"+height+"/"+subject);
 				return;
 			}
 			mode = RenderMode.valueOf(modeStr.toUpperCase());
@@ -192,17 +194,17 @@ public class VisageHandler extends AbstractHandler {
 		if (mode == RenderMode.FULL) {
 			int clamped = Math.max(minSize, Math.min(height, (int)(maxSize*1.625)));
 			if (clamped != height) {
-				response.sendRedirect("/"+modeStr+"/"+clamped+"/"+subject);
+				response.sendRedirect(baseUrl+"/"+modeStr+"/"+clamped+"/"+subject);
 			}
 		} else {
 			int clamped = Math.max(minSize, Math.min(height, maxSize));
 			if (clamped != height) {
-				response.sendRedirect("/"+modeStr+"/"+clamped+"/"+subject);
+				response.sendRedirect(baseUrl+"/"+modeStr+"/"+clamped+"/"+subject);
 			}
 		}
 		int rounded = Math.round(height / (float) granularity)*granularity;
 		if (rounded != height) {
-			response.sendRedirect("/"+modeStr+"/"+rounded+"/"+subject);
+			response.sendRedirect(baseUrl+"/"+modeStr+"/"+rounded+"/"+subject);
 			return;
 		}
 		
@@ -222,7 +224,7 @@ public class VisageHandler extends AbstractHandler {
 						try (Jedis j = master.getResolverJedis();) {
 							String resp = j.get(subject);
 							if (resp != null) {
-								response.sendRedirect("/"+modeStr+"/"+height+"/"+resp.replace("-", ""));
+								response.sendRedirect(baseUrl+"/"+modeStr+"/"+height+"/"+resp.replace("-", ""));
 								return;
 							} else {
 								if (cacheHeader) missed.add("username");
@@ -256,7 +258,7 @@ public class VisageHandler extends AbstractHandler {
 									return;
 								} else if (result[0] instanceof UUID) {
 									uuid = (UUID) result[0];
-									response.sendRedirect("/"+modeStr+"/"+height+"/"+uuid.toString().replace("-", ""));
+									response.sendRedirect(baseUrl+"/"+modeStr+"/"+height+"/"+uuid.toString().replace("-", ""));
 									j.set(subject, uuid.toString());
 									j.pexpire(subject, resolverTtlMillis);
 									return;
