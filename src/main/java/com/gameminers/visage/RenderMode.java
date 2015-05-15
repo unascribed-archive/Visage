@@ -27,15 +27,15 @@ package com.gameminers.visage;
 import java.util.logging.Level;
 
 import com.gameminers.visage.slave.render.HeadRenderer;
-import com.gameminers.visage.slave.render.PlayerRenderer;
-import com.gameminers.visage.slave.render.PortraitRenderer;
+import com.gameminers.visage.slave.render.FullRenderer;
+import com.gameminers.visage.slave.render.BustRenderer;
 import com.gameminers.visage.slave.render.Renderer;
 
 public enum RenderMode {
 	FACE(null),
 	HEAD(HeadRenderer.class),
-	PORTRAIT(PortraitRenderer.class),
-	PLAYER(PlayerRenderer.class),
+	BUST(BustRenderer.class),
+	FULL(FullRenderer.class),
 	SKIN(null);
 	private final Class<? extends Renderer> renderer;
 	private RenderMode(Class<? extends Renderer> renderer) {

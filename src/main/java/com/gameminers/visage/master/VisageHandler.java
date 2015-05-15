@@ -129,7 +129,7 @@ public class VisageHandler extends AbstractHandler {
 			return;
 		}
 		int width = defaultSize;
-		RenderMode mode = RenderMode.PLAYER;
+		RenderMode mode = RenderMode.FULL;
 		String subject;
 		final List<String> missed = cacheHeader ? new ArrayList<String>() : null;
 		
@@ -254,7 +254,7 @@ public class VisageHandler extends AbstractHandler {
 		
 		width *= supersampling;
 		height *= supersampling;
-		if (mode == RenderMode.PLAYER) {
+		if (mode == RenderMode.FULL) {
 			width = (int)Math.ceil(width * 0.625f);
 		}
 		GameProfile profile = new GameProfile(uuid, "<unknown>");

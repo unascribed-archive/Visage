@@ -32,7 +32,7 @@ import javax.imageio.ImageIO;
 
 import com.gameminers.visage.Visage;
 import com.gameminers.visage.VisageRunner;
-import com.gameminers.visage.slave.render.PlayerRenderer;
+import com.gameminers.visage.slave.render.FullRenderer;
 import com.gameminers.visage.slave.render.Renderer;
 
 public class VisageBenchmark extends Thread implements VisageRunner {
@@ -46,7 +46,7 @@ public class VisageBenchmark extends Thread implements VisageRunner {
 	}
 	@Override
 	public void run() {
-		Renderer renderer = new PlayerRenderer();
+		Renderer renderer = new FullRenderer();
 		try {
 			Visage.log.warning("VISAGE IS NOT AN ACCURATE HARDWARE BENCHMARK. This benchmark is to give you an idea of how well this machine would work as a Visage slave.");
 			Visage.log.info("Loading skin...");
@@ -103,7 +103,7 @@ public class VisageBenchmark extends Thread implements VisageRunner {
 		Visage.log.info("Starting benchmark #"+(num++)+" - "+supersampling+"x supersampling, "+size+"x"+size+" result, "+csize+"x"+csize+" canvas, "+(readpixels ? "with" : "without")+" readpixels)...");
 		try {
 			Visage.log.info("Setting up renderer...");
-			Renderer renderer = new PlayerRenderer();
+			Renderer renderer = new FullRenderer();
 			renderer.init(supersampling);
 			renderer.setSkin(skin);
 			int count = 0;

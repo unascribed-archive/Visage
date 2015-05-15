@@ -25,10 +25,9 @@
 package com.gameminers.visage.slave.render;
 
 import com.gameminers.visage.slave.render.primitive.Cube;
-import com.gameminers.visage.slave.render.primitive.Plane;
 import com.gameminers.visage.slave.render.primitive.Stage;
 
-public class PlayerRenderer extends Renderer {
+public class BustRenderer extends Renderer {
 
 	@Override
 	protected void initPrimitives() {
@@ -37,19 +36,11 @@ public class PlayerRenderer extends Renderer {
 		
 		Stage stage = new Stage();
 		stage.x = 0;
-		stage.y = -2.8f;
-		stage.z = -10.35f;
+		stage.y = -0.8f;
+		stage.z = -7;
 		stage.rotX = tilt;
 		stage.rotY = angle;
 		addPrimitive(stage);
-		
-		Plane shadow = new Plane();
-		shadow.y = 7f;
-		shadow.scaleX = 1.85f;
-		shadow.scaleZ = 0.85f;
-		shadow.texture = TextureType.SHADOW;
-		shadow.lit = false;
-		stage.members.add(shadow);
 		
 		Cube larm = new Cube();
 		larm.x = 1.75f;
@@ -72,24 +63,6 @@ public class PlayerRenderer extends Renderer {
 		larm2.texture = TextureType.LARM2;
 		stage.members.add(larm2);
 		
-		Cube lleg = new Cube();
-		lleg.x = 0.5f;
-		lleg.y = 5.425f;
-		lleg.scaleY = 1.5f;
-		lleg.scaleZ = 0.5f;
-		lleg.scaleX = 0.5f;
-		lleg.texture = TextureType.LLEG;
-		stage.members.add(lleg);
-		
-		Cube rleg = new Cube();
-		rleg.x = -0.5f;
-		rleg.y = 5.425f;
-		rleg.scaleY = 1.5f;
-		rleg.scaleZ = 0.5f;
-		rleg.scaleX = 0.5f;
-		rleg.texture = TextureType.RLEG;
-		stage.members.add(rleg);
-		
 		Cube body = new Cube();
 		body.y = 2.475f;
 		body.scaleY = 1.5f;
@@ -103,24 +76,6 @@ public class PlayerRenderer extends Renderer {
 		body2.scaleX = 1.05f;
 		body2.texture = TextureType.BODY2;
 		stage.members.add(body2);
-		
-		Cube lleg2 = new Cube();
-		lleg2.x = 0.475f;
-		lleg2.y = 5.4f;
-		lleg2.scaleY = 1.55f;
-		lleg2.scaleZ = 0.55f;
-		lleg2.scaleX = 0.55f;
-		lleg2.texture = TextureType.LLEG2;
-		stage.members.add(lleg2);
-		
-		Cube rleg2 = new Cube();
-		rleg2.x = -0.525f;
-		rleg2.y = 5.4f;
-		rleg2.scaleY = 1.55f;
-		rleg2.scaleZ = 0.55f;
-		rleg2.scaleX = 0.55f;
-		rleg2.texture = TextureType.RLEG2;
-		stage.members.add(rleg2);
 		
 		Cube head = new Cube();
 		head.y = -0.025f;
@@ -143,7 +98,7 @@ public class PlayerRenderer extends Renderer {
 		rarm.texture = TextureType.RARM;
 		stage.members.add(rarm);
 		Cube rarm2 = new Cube();
-		rarm2.x = -1.775f;
+		rarm2.x = -1.7f;
 		rarm2.y = 2.3f;
 		rarm2.z = 0.15f;
 		rarm2.scaleY = 1.55f;
