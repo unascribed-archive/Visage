@@ -190,7 +190,12 @@ public abstract class Renderer {
 		if (pbuffer != null) {
 			destroy();
 		}
-		pbuffer = new Pbuffer(512*supersampling, 512*supersampling, new PixelFormat(8, 8, 0), null, null, new ContextAttribs(1, 2));
+		int width = 512;
+		int height = 512;
+		if (this instanceof FullRenderer) {
+			height = 832;
+		}
+		pbuffer = new Pbuffer(width*supersampling, height*supersampling, new PixelFormat(8, 8, 0), null, null, new ContextAttribs(1, 2));
 		if (pbuffer.isBufferLost())
 			throw new LWJGLException("Could not create Pbuffer");
 		pbuffer.makeCurrent();
