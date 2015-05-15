@@ -24,6 +24,7 @@
  */
 package com.gameminers.visage.slave;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -34,6 +35,7 @@ import org.lwjgl.opengl.GLContext;
 import org.lwjgl.opengl.Pbuffer;
 import org.lwjgl.opengl.PixelFormat;
 import org.spacehq.mc.auth.SessionService;
+
 import com.gameminers.visage.Visage;
 import com.gameminers.visage.VisageRunner;
 import com.google.common.collect.Lists;
@@ -53,10 +55,12 @@ public class VisageSlave extends Thread implements VisageRunner {
 	protected SessionService session = new SessionService();
 	protected Gson gson = new Gson();
 	protected String name;
+	protected ConnectionFactory factory;
 	protected Connection conn;
 	protected Channel channel;
 	protected List<RenderThread> threads = Lists.newArrayList();
 	protected int idx = 0;
+	protected final String queue;
 	private boolean run = true;
 	public VisageSlave(Config config) {
 		super("Slave thread");
@@ -74,6 +78,7 @@ public class VisageSlave extends Thread implements VisageRunner {
 			name = "unnamed slave";
 		}
 		Visage.log.info("Slave name is '"+name+"'");
+		queue = config.getString("rabbitmq.queue");
 	}
 	
 	@Override
@@ -102,8 +107,7 @@ public class VisageSlave extends Thread implements VisageRunner {
 				Visage.log.fine("Visage fully supports your OS and graphics driver.");
 			}
 			test.destroy();
-			Visage.log.info("Connecting to RabbitMQ at "+config.getString("rabbitmq.host")+":"+config.getInt("rabbitmq.port"));
-			ConnectionFactory factory = new ConnectionFactory();
+			factory = new ConnectionFactory();
 			factory.setHost(config.getString("rabbitmq.host"));
 			factory.setPort(config.getInt("rabbitmq.port"));
 			factory.setRequestedHeartbeat(10);
@@ -112,20 +116,13 @@ public class VisageSlave extends Thread implements VisageRunner {
 				factory.setUsername(config.getString("rabbitmq.user"));
 				factory.setPassword(config.getString("rabbitmq.password"));
 			}
-			conn = factory.newConnection();
+			reconnect();
+			
 			Visage.log.info("Setting up "+config.getInt("renderers")+" render threads");
 			for (int i = 0; i < config.getInt("renderers"); i++) {
 				RenderThread rt = new RenderThread(this);
 				threads.add(rt);
 				rt.start();
-			}
-			channel = conn.createChannel();
-			String queue = config.getString("rabbitmq.queue");
-			if (Visage.debug) Visage.log.finer("Setting up queue '"+queue+"'");
-			channel.queueDeclare(queue, false, false, true, null);
-			int qos = config.getInt("qos");
-			if (qos != -1) {
-				channel.basicQos(qos);
 			}
 			
 			QueueingConsumer consumer = new QueueingConsumer(channel);
@@ -144,11 +141,13 @@ public class VisageSlave extends Thread implements VisageRunner {
 						if (idx >= threads.size()) {
 							idx = 0;
 						}
+					} catch (ShutdownSignalException e) {
+						try { conn.close(); } catch (Exception ex) {}
+						reconnect();
 					} catch (InterruptedException e) {
 						break;
 					}
 				}
-			} catch (ShutdownSignalException e) {
 			} catch (Exception e) {
 				Visage.log.log(Level.SEVERE, "A fatal error has occurred in the slave run loop.", e);
 			}
@@ -163,6 +162,18 @@ public class VisageSlave extends Thread implements VisageRunner {
 			}
 		} catch (Exception e) {
 			Visage.log.log(Level.SEVERE, "A fatal error has occurred while setting up the slave.", e);
+		}
+	}
+
+	private void reconnect() throws IOException {
+		Visage.log.info("Connecting to RabbitMQ at "+config.getString("rabbitmq.host")+":"+config.getInt("rabbitmq.port"));
+		conn = factory.newConnection();
+		channel = conn.createChannel();
+		if (Visage.debug) Visage.log.finer("Setting up queue '"+queue+"'");
+		channel.queueDeclare(queue, false, false, true, null);
+		int qos = config.getInt("qos");
+		if (qos != -1) {
+			channel.basicQos(qos);
 		}
 	}
 
