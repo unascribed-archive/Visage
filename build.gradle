@@ -44,7 +44,7 @@ dependencies {
 	compile 'org.spacehq:mcauthlib:1.0-gm-fixed'
 	
 	compile "org.lwjgl.lwjgl:lwjgl:$lwjgl"
-    compile "org.lwjgl.lwjgl:lwjgl_util:$lwjgl"
+	compile "org.lwjgl.lwjgl:lwjgl_util:$lwjgl"
     
 	compile 'org.eclipse.jetty:jetty-server:9.3.0.RC0'
 	compile 'redis.clients:jedis:2.6.2'
