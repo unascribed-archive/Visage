@@ -133,7 +133,7 @@ public class VisageHandler extends AbstractHandler {
 		String subject;
 		final List<String> missed = cacheHeader ? new ArrayList<String>() : null;
 		if (target.contains("-")) {
-			response.sendRedirect(baseUrl+target.replace("-", ""));
+			sendPermanentRedirect(baseUrl+target.replace("-", ""), response);
 			return;
 		}
 		// XXX Regex is probably a slow (and somewhat confusing) way to do this
@@ -172,15 +172,15 @@ public class VisageHandler extends AbstractHandler {
 		try {
 			if ("PLAYER".equalsIgnoreCase(modeStr)) {
 				height *= 1.625;
-				response.sendRedirect(baseUrl+"/full/"+height+"/"+subject);
+				sendPermanentRedirect(baseUrl+"/full/"+height+"/"+subject, response);
 				return;
 			} else if ("FULL".equalsIgnoreCase(modeStr)) {
 				width = (int)Math.ceil(width / 1.625f);
 			} else if ("HELM".equalsIgnoreCase(modeStr)) {
-				response.sendRedirect(baseUrl+"/face/"+height+"/"+subject);
+				sendPermanentRedirect(baseUrl+"/face/"+height+"/"+subject, response);
 				return;
 			} else if ("PORTRAIT".equalsIgnoreCase(modeStr)) {
-				response.sendRedirect(baseUrl+"/bust/"+height+"/"+subject);
+				sendPermanentRedirect(baseUrl+"/bust/"+height+"/"+subject, response);
 				return;
 			}
 			mode = RenderMode.valueOf(modeStr.toUpperCase());
@@ -194,17 +194,19 @@ public class VisageHandler extends AbstractHandler {
 		if (mode == RenderMode.FULL) {
 			int clamped = Math.max(minSize, Math.min(height, (int)(maxSize*1.625)));
 			if (clamped != height) {
-				response.sendRedirect(baseUrl+"/"+modeStr+"/"+clamped+"/"+subject);
+				sendPermanentRedirect(baseUrl+"/"+modeStr+"/"+clamped+"/"+subject, response);
+				return;
 			}
 		} else {
 			int clamped = Math.max(minSize, Math.min(height, maxSize));
 			if (clamped != height) {
-				response.sendRedirect(baseUrl+"/"+modeStr+"/"+clamped+"/"+subject);
+				sendPermanentRedirect(baseUrl+"/"+modeStr+"/"+clamped+"/"+subject, response);
+				return;
 			}
 		}
 		int rounded = Math.round(height / (float) granularity)*granularity;
 		if (rounded != height) {
-			response.sendRedirect(baseUrl+"/"+modeStr+"/"+rounded+"/"+subject);
+			sendPermanentRedirect(baseUrl+"/"+modeStr+"/"+rounded+"/"+subject, response);
 			return;
 		}
 		
@@ -224,7 +226,7 @@ public class VisageHandler extends AbstractHandler {
 						try (Jedis j = master.getResolverJedis();) {
 							String resp = j.get(subject);
 							if (resp != null) {
-								response.sendRedirect(baseUrl+"/"+modeStr+"/"+height+"/"+resp.replace("-", ""));
+								sendPermanentRedirect(baseUrl+"/"+modeStr+"/"+height+"/"+resp.replace("-", ""), response);
 								return;
 							} else {
 								if (cacheHeader) missed.add("username");
@@ -258,7 +260,7 @@ public class VisageHandler extends AbstractHandler {
 									return;
 								} else if (result[0] instanceof UUID) {
 									uuid = (UUID) result[0];
-									response.sendRedirect(baseUrl+"/"+modeStr+"/"+height+"/"+uuid.toString().replace("-", ""));
+									sendPermanentRedirect(baseUrl+"/"+modeStr+"/"+height+"/"+uuid.toString().replace("-", ""), response);
 									j.set(subject, uuid.toString());
 									j.pexpire(subject, resolverTtlMillis);
 									return;
@@ -379,6 +381,10 @@ public class VisageHandler extends AbstractHandler {
 			response.setStatus(500);
 			response.flushBuffer();
 		}
+	}
+	private void sendPermanentRedirect(String path, HttpServletResponse response) {
+		response.setStatus(HttpServletResponse.SC_MOVED_PERMANENTLY);
+		response.setHeader("Location", path);
 	}
 	private void write(HttpServletResponse response, List<String> missed, byte[] png, String slave) throws IOException {
 		if (slaveHeader) {

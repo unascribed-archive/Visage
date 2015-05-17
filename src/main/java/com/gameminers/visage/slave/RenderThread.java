@@ -136,7 +136,7 @@ public class RenderThread extends Thread {
 		byte[] skinData = new byte[data.readInt()];
 		data.readFully(skinData);
 		BufferedImage skin = ImageIO.read(new ByteArrayInputStream(skinData));
-		if (Visage.debug) Visage.log.finer("Rendering a "+width+"x"+height+" "+mode.name().toLowerCase()+" ("+supersampling+"x supersampling) for "+(profile == null ? "null" : profile.getName()));
+		Visage.log.info("Received a job to render a "+width+"x"+height+" "+mode.name().toLowerCase()+" ("+supersampling+"x supersampling) for "+(profile == null ? "null" : profile.getName()));
 		byte[] pngBys = draw(mode, width, height, supersampling, profile, skin, params);
 		if (Visage.trace) Visage.log.finest("Got png bytes");
 		parent.channel.basicPublish("", props.getReplyTo(), replyProps, buildResponse(0, pngBys));

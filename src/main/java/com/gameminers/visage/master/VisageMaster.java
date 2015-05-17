@@ -306,7 +306,7 @@ public class VisageMaster extends Thread implements VisageRunner {
 				RenderResponse resp = new RenderResponse();
 				resp.slave = slave;
 				resp.png = payload;
-				if (Visage.debug) Visage.log.finer("Receieved render from "+resp.slave);
+				Visage.log.info("Receieved a "+mode.name().toLowerCase()+" render from "+resp.slave);
 				return resp;
 			} else if (type == 1) {
 				if (Visage.trace) Visage.log.finest("Got type 1, failure");
