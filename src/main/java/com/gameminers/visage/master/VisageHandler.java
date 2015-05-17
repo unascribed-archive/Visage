@@ -125,6 +125,7 @@ public class VisageHandler extends AbstractHandler {
 	}
 	@Override
 	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
+		baseRequest.setHandled(true);
 		if (!"GET".equals(request.getMethod())) {
 			response.sendError(405);
 			return;
@@ -132,7 +133,7 @@ public class VisageHandler extends AbstractHandler {
 		RenderMode mode = RenderMode.FULL;
 		String subject;
 		final List<String> missed = cacheHeader ? new ArrayList<String>() : null;
-		if (target.contains("-")) {
+		if (target.contains("-") && !(target.endsWith("X-Steve") || target.endsWith("X-Alex"))) {
 			sendPermanentRedirect(baseUrl+target.replace("-", ""), response);
 			return;
 		}
@@ -383,7 +384,7 @@ public class VisageHandler extends AbstractHandler {
 		}
 	}
 	private void sendPermanentRedirect(String path, HttpServletResponse response) {
-		response.setStatus(HttpServletResponse.SC_MOVED_PERMANENTLY);
+		response.setStatus(301);
 		response.setHeader("Location", path);
 	}
 	private void write(HttpServletResponse response, List<String> missed, byte[] png, String slave) throws IOException {
