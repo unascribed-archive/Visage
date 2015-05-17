@@ -227,7 +227,7 @@ public class VisageHandler extends AbstractHandler {
 						try (Jedis j = master.getResolverJedis();) {
 							String resp = j.get(subject);
 							if (resp != null) {
-								sendPermanentRedirect(baseUrl+"/"+modeStr+"/"+height+"/"+resp.replace("-", ""), response);
+								response.sendRedirect(baseUrl+"/"+modeStr+"/"+height+"/"+resp.replace("-", ""));
 								return;
 							} else {
 								if (cacheHeader) missed.add("username");
@@ -261,7 +261,7 @@ public class VisageHandler extends AbstractHandler {
 									return;
 								} else if (result[0] instanceof UUID) {
 									uuid = (UUID) result[0];
-									sendPermanentRedirect(baseUrl+"/"+modeStr+"/"+height+"/"+uuid.toString().replace("-", ""), response);
+									response.sendRedirect(baseUrl+"/"+modeStr+"/"+height+"/"+uuid.toString().replace("-", ""));
 									j.set(subject, uuid.toString());
 									j.pexpire(subject, resolverTtlMillis);
 									return;
