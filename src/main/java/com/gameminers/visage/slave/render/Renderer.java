@@ -249,9 +249,9 @@ public abstract class Renderer {
 		checkGLError();
 		
 		lightColor = BufferUtils.createFloatBuffer(4);
-		lightColor.put(1f);
-		lightColor.put(0.9f);
-		lightColor.put(0.6f);
+		lightColor.put(3f);
+		lightColor.put(3f);
+		lightColor.put(3f);
 		lightColor.put(1.0f);
 		lightColor.flip();
 		glLight(GL_LIGHT0, GL_AMBIENT, lightColor);
@@ -262,7 +262,7 @@ public abstract class Renderer {
 		lightPosition.put(1f);
 		lightPosition.put(1000f);
 		lightPosition.flip();
-		
+
 		glEnable(GL_LIGHTING);
 		glEnable(GL_LIGHT0);
 		checkGLError();
