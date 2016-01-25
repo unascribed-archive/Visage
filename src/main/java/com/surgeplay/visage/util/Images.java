@@ -35,6 +35,10 @@ public class Images {
 
 	public static BufferedImage toBuffered(Image img) throws InterruptedException {
 		if (img instanceof BufferedImage) return (BufferedImage) img;
+		return toABGR(img);
+	}
+
+	public static BufferedImage toABGR(Image img) throws InterruptedException {
 		MediaTracker tracker = new MediaTracker(new JButton("Dummy"));
 		tracker.addImage(img, 0);
 		tracker.waitForID(0);

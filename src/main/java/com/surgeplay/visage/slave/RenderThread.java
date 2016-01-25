@@ -49,6 +49,7 @@ import com.rabbitmq.client.QueueingConsumer.Delivery;
 import com.surgeplay.visage.RenderMode;
 import com.surgeplay.visage.Visage;
 import com.surgeplay.visage.slave.render.Renderer;
+import com.surgeplay.visage.util.Images;
 import com.surgeplay.visage.util.Profiles;
 
 public class RenderThread extends Thread {
@@ -135,7 +136,7 @@ public class RenderThread extends Thread {
 		}
 		byte[] skinData = new byte[data.readInt()];
 		data.readFully(skinData);
-		BufferedImage skin = ImageIO.read(new ByteArrayInputStream(skinData));
+		BufferedImage skin = Images.toABGR(ImageIO.read(new ByteArrayInputStream(skinData)));
 		Visage.log.info("Received a job to render a "+width+"x"+height+" "+mode.name().toLowerCase()+" ("+supersampling+"x supersampling) for "+(profile == null ? "null" : profile.getName()));
 		byte[] pngBys = draw(mode, width, height, supersampling, profile, skin, params);
 		if (Visage.trace) Visage.log.finest("Got png bytes");
