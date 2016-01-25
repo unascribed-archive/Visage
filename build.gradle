@@ -12,10 +12,10 @@ plugins {
 defaultTasks 'clean', 'licenseFormat', 'build'
 
 // Project information
-group = 'com.gameminers'
+group = 'com.surgeplay'
 version = '1.2.5-SNAPSHOT'
 archivesBaseName = 'Visage'
-mainClassName = 'com.gameminers.visage.Visage'
+mainClassName = 'com.surgeplay.visage.Visage'
 
 sourceCompatibility = 1.7
 targetCompatibility = 1.7

@@ -65,4 +65,4 @@ Visage, just run `./gradlew distZip`. A distribution zip with all necessary file
  * Update to LWJGL3
  * Stop using Pbuffers and use FBOs
 
-[1]: https://visage.gameminers.com/
+[1]: https://visage.surgeplay.com/
