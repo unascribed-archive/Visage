@@ -31,6 +31,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.ArrayDeque;
@@ -44,8 +45,10 @@ import javax.imageio.ImageIO;
 import org.spacehq.mc.auth.GameProfile;
 
 import com.google.common.collect.Maps;
+import com.google.common.io.Files;
 import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.QueueingConsumer.Delivery;
+import com.sixlegs.png.PngImage;
 import com.surgeplay.visage.RenderMode;
 import com.surgeplay.visage.Visage;
 import com.surgeplay.visage.slave.render.Renderer;
@@ -136,7 +139,8 @@ public class RenderThread extends Thread {
 		}
 		byte[] skinData = new byte[data.readInt()];
 		data.readFully(skinData);
-		BufferedImage skin = Images.toABGR(ImageIO.read(new ByteArrayInputStream(skinData)));
+		BufferedImage skinRaw = new PngImage().read(new ByteArrayInputStream(skinData), false);
+		BufferedImage skin = Images.toARGB(skinRaw);
 		Visage.log.info("Received a job to render a "+width+"x"+height+" "+mode.name().toLowerCase()+" ("+supersampling+"x supersampling) for "+(profile == null ? "null" : profile.getName()));
 		byte[] pngBys = draw(mode, width, height, supersampling, profile, skin, params);
 		if (Visage.trace) Visage.log.finest("Got png bytes");

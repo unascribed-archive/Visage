@@ -35,14 +35,14 @@ public class Images {
 
 	public static BufferedImage toBuffered(Image img) throws InterruptedException {
 		if (img instanceof BufferedImage) return (BufferedImage) img;
-		return toABGR(img);
+		return toARGB(img);
 	}
 
-	public static BufferedImage toABGR(Image img) throws InterruptedException {
+	public static BufferedImage toARGB(Image img) throws InterruptedException {
 		MediaTracker tracker = new MediaTracker(new JButton("Dummy"));
 		tracker.addImage(img, 0);
 		tracker.waitForID(0);
-		BufferedImage buf = new BufferedImage(img.getWidth(null), img.getHeight(null), BufferedImage.TYPE_4BYTE_ABGR);
+		BufferedImage buf = new BufferedImage(img.getWidth(null), img.getHeight(null), BufferedImage.TYPE_INT_ARGB);
 		Graphics2D g2d = buf.createGraphics();
 		g2d.drawImage(img, 0, 0, null);
 		g2d.dispose();

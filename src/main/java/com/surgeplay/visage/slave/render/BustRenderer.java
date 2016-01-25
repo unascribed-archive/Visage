@@ -51,6 +51,7 @@ public class BustRenderer extends Renderer {
 		larm.scaleX = 0.5f;
 		larm.rotZ = -10f;
 		larm.texture = TextureType.LARM;
+		larm.alphaMode = AlphaMode.NONE;
 		stage.members.add(larm);
 		Cube larm2 = new Cube();
 		larm2.x = 1.7f;
@@ -61,6 +62,7 @@ public class BustRenderer extends Renderer {
 		larm2.scaleX = 0.55f;
 		larm2.rotZ = -10f;
 		larm2.texture = TextureType.LARM2;
+		larm2.alphaMode = AlphaMode.MASK;
 		stage.members.add(larm2);
 		
 		Cube body = new Cube();
@@ -68,6 +70,7 @@ public class BustRenderer extends Renderer {
 		body.scaleY = 1.5f;
 		body.scaleZ = 0.5f;
 		body.texture = TextureType.BODY;
+		body.alphaMode = AlphaMode.NONE;
 		stage.members.add(body);
 		Cube body2 = new Cube();
 		body2.y = 2.5f;
@@ -75,16 +78,19 @@ public class BustRenderer extends Renderer {
 		body2.scaleZ = 0.55f;
 		body2.scaleX = 1.05f;
 		body2.texture = TextureType.BODY2;
+		body2.alphaMode = AlphaMode.MASK;
 		stage.members.add(body2);
 		
 		Cube head = new Cube();
 		head.y = -0.025f;
 		head.z = -0.025f;
 		head.texture = TextureType.HEAD;
+		head.alphaMode = AlphaMode.NONE;
 		stage.members.add(head);
 		Cube helm = new Cube();
 		helm.scaleX = helm.scaleY = helm.scaleZ = 1.05f;
 		helm.texture = TextureType.HEAD2;
+		helm.alphaMode = AlphaMode.MASK;
 		stage.members.add(helm);
 		
 		Cube rarm = new Cube();
@@ -96,6 +102,7 @@ public class BustRenderer extends Renderer {
 		rarm.scaleX = 0.5f;
 		rarm.rotZ = 10f;
 		rarm.texture = TextureType.RARM;
+		rarm.alphaMode = AlphaMode.NONE;
 		stage.members.add(rarm);
 		Cube rarm2 = new Cube();
 		rarm2.x = -1.7f;
@@ -106,6 +113,7 @@ public class BustRenderer extends Renderer {
 		rarm2.scaleX = 0.55f;
 		rarm2.rotZ = 10f;
 		rarm2.texture = TextureType.RARM2;
+		rarm2.alphaMode = AlphaMode.MASK;
 		stage.members.add(rarm2);
 	}
 

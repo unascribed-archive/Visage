@@ -52,11 +52,13 @@ public class HeadRenderer extends Renderer {
 		head.y = -0.025f;
 		head.z = -0.025f;
 		head.texture = TextureType.HEAD;
+		head.alphaMode = AlphaMode.NONE;
 		stage.members.add(head);
 		Cube helm = new Cube();
 		helm.scaleX = helm.scaleY = helm.scaleZ = 1.05f;
 		helm.z = -0f;
 		helm.texture = TextureType.HEAD2;
+		helm.alphaMode = AlphaMode.MASK;
 		stage.members.add(helm);
 	}
 }

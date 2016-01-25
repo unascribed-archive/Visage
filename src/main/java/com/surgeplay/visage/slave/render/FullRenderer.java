@@ -49,6 +49,7 @@ public class FullRenderer extends Renderer {
 		shadow.scaleZ = 0.85f;
 		shadow.texture = TextureType.SHADOW;
 		shadow.lit = false;
+		shadow.alphaMode = AlphaMode.FULL;
 		stage.members.add(shadow);
 		
 		Cube larm = new Cube();
@@ -60,6 +61,7 @@ public class FullRenderer extends Renderer {
 		larm.scaleX = 0.5f;
 		larm.rotZ = -10f;
 		larm.texture = TextureType.LARM;
+		larm.alphaMode = AlphaMode.NONE;
 		stage.members.add(larm);
 		Cube larm2 = new Cube();
 		larm2.x = 1.7f;
@@ -70,6 +72,7 @@ public class FullRenderer extends Renderer {
 		larm2.scaleX = 0.55f;
 		larm2.rotZ = -10f;
 		larm2.texture = TextureType.LARM2;
+		larm2.alphaMode = AlphaMode.MASK;
 		stage.members.add(larm2);
 		
 		Cube lleg = new Cube();
@@ -79,6 +82,7 @@ public class FullRenderer extends Renderer {
 		lleg.scaleZ = 0.5f;
 		lleg.scaleX = 0.5f;
 		lleg.texture = TextureType.LLEG;
+		lleg.alphaMode = AlphaMode.NONE;
 		stage.members.add(lleg);
 		
 		Cube rleg = new Cube();
@@ -88,6 +92,7 @@ public class FullRenderer extends Renderer {
 		rleg.scaleZ = 0.5f;
 		rleg.scaleX = 0.5f;
 		rleg.texture = TextureType.RLEG;
+		rleg.alphaMode = AlphaMode.NONE;
 		stage.members.add(rleg);
 		
 		Cube body = new Cube();
@@ -95,6 +100,7 @@ public class FullRenderer extends Renderer {
 		body.scaleY = 1.5f;
 		body.scaleZ = 0.5f;
 		body.texture = TextureType.BODY;
+		body.alphaMode = AlphaMode.NONE;
 		stage.members.add(body);
 		Cube body2 = new Cube();
 		body2.y = 2.5f;
@@ -102,6 +108,7 @@ public class FullRenderer extends Renderer {
 		body2.scaleZ = 0.55f;
 		body2.scaleX = 1.05f;
 		body2.texture = TextureType.BODY2;
+		body2.alphaMode = AlphaMode.MASK;
 		stage.members.add(body2);
 		
 		Cube lleg2 = new Cube();
@@ -111,6 +118,7 @@ public class FullRenderer extends Renderer {
 		lleg2.scaleZ = 0.55f;
 		lleg2.scaleX = 0.55f;
 		lleg2.texture = TextureType.LLEG2;
+		lleg2.alphaMode = AlphaMode.MASK;
 		stage.members.add(lleg2);
 		
 		Cube rleg2 = new Cube();
@@ -120,16 +128,19 @@ public class FullRenderer extends Renderer {
 		rleg2.scaleZ = 0.55f;
 		rleg2.scaleX = 0.55f;
 		rleg2.texture = TextureType.RLEG2;
+		rleg2.alphaMode = AlphaMode.MASK;
 		stage.members.add(rleg2);
 		
 		Cube head = new Cube();
 		head.y = -0.025f;
 		head.z = -0.025f;
 		head.texture = TextureType.HEAD;
+		head.alphaMode = AlphaMode.NONE;
 		stage.members.add(head);
 		Cube helm = new Cube();
 		helm.scaleX = helm.scaleY = helm.scaleZ = 1.05f;
 		helm.texture = TextureType.HEAD2;
+		helm.alphaMode = AlphaMode.MASK;
 		stage.members.add(helm);
 		
 		Cube rarm = new Cube();
@@ -141,6 +152,7 @@ public class FullRenderer extends Renderer {
 		rarm.scaleX = 0.5f;
 		rarm.rotZ = 10f;
 		rarm.texture = TextureType.RARM;
+		rarm.alphaMode = AlphaMode.NONE;
 		stage.members.add(rarm);
 		Cube rarm2 = new Cube();
 		rarm2.x = -1.775f;
@@ -151,6 +163,7 @@ public class FullRenderer extends Renderer {
 		rarm2.scaleX = 0.55f;
 		rarm2.rotZ = 10f;
 		rarm2.texture = TextureType.RARM2;
+		rarm2.alphaMode = AlphaMode.MASK;
 		stage.members.add(rarm2);
 	}
 

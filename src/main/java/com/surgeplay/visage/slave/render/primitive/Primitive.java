@@ -27,9 +27,10 @@ package com.surgeplay.visage.slave.render.primitive;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.ARBVertexBufferObject.*;
 
-import org.lwjgl.opengl.Util;
+import com.surgeplay.visage.slave.util.Errors;
 
 import com.surgeplay.visage.Visage;
+import com.surgeplay.visage.slave.render.AlphaMode;
 import com.surgeplay.visage.slave.render.Renderer;
 import com.surgeplay.visage.slave.render.TextureType;
 
@@ -41,6 +42,7 @@ public abstract class Primitive {
 	public boolean lit = true;
 	public boolean textured = true;
 	public TextureType texture = TextureType.NONE;
+	public AlphaMode alphaMode = AlphaMode.FULL;
 	protected boolean inStage = true;
 	public abstract void render(Renderer renderer);
 	protected void doRender(Renderer renderer, int vbo, int tcbo, float[] vertices) {
@@ -71,32 +73,53 @@ public abstract class Primitive {
 				if (Visage.trace) Visage.log.finest("Disabling texturing");
 				glDisable(GL_TEXTURE_2D);
 			}
-			Util.checkGLError();
+			switch (alphaMode) {
+				case FULL:
+					if (Visage.trace) Visage.log.finest("Full alpha - Enabling blend and alpha test");
+					glEnable(GL_BLEND);
+					glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+					glDisable(GL_ALPHA_TEST);
+					break;
+				case MASK:
+					if (Visage.trace) Visage.log.finest("Mask alpha - Enabling alpha test, disabling blend");
+					glDisable(GL_BLEND);
+					glEnable(GL_ALPHA_TEST);
+					glAlphaFunc(GL_GREATER, 0.15f);
+					break;
+				case NONE:
+					if (Visage.trace) Visage.log.finest("No alpha - Disabling blend and alpha test");
+					glDisable(GL_BLEND);
+					glDisable(GL_ALPHA_TEST);
+					break;
+				default:
+					break;
+			}
+			Errors.checkGLError();
 			
 			if (Visage.trace) Visage.log.finest("Setting VBO");
-    		glEnableClientState(GL_VERTEX_ARRAY);
-    		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-    		if (tcbo == Integer.MAX_VALUE) {
-        		glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo);
-    			glTexCoordPointer(2, GL_FLOAT, 20, 12);
-    			glVertexPointer(3, GL_FLOAT, 20, 0);
-    		} else {
-    			glEnableClientState(GL_NORMAL_ARRAY);
-    			glBindBufferARB(GL_ARRAY_BUFFER_ARB, tcbo);
-    			glTexCoordPointer(2, GL_FLOAT, 0, 0);
-    			glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo);
-    			glVertexPointer(3, GL_FLOAT, 24, 0);
-    			glNormalPointer(GL_FLOAT, 24, 12);
-    		}
-		    Util.checkGLError();
-		    
-		    if (Visage.trace) Visage.log.finest("Rendering");
-		    if (tcbo == Integer.MAX_VALUE) {
-		    	glDrawArrays(GL_QUADS, 0, vertices.length/5);
-		    } else {
-		    	glDrawArrays(GL_QUADS, 0, vertices.length/6);
-		    }
-			Util.checkGLError();
+			glEnableClientState(GL_VERTEX_ARRAY);
+			glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+			if (tcbo == Integer.MAX_VALUE) {
+				glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo);
+				glTexCoordPointer(2, GL_FLOAT, 20, 12);
+				glVertexPointer(3, GL_FLOAT, 20, 0);
+			} else {
+				glEnableClientState(GL_NORMAL_ARRAY);
+				glBindBufferARB(GL_ARRAY_BUFFER_ARB, tcbo);
+				glTexCoordPointer(2, GL_FLOAT, 0, 0);
+				glBindBufferARB(GL_ARRAY_BUFFER_ARB, vbo);
+				glVertexPointer(3, GL_FLOAT, 24, 0);
+				glNormalPointer(GL_FLOAT, 24, 12);
+			}
+			Errors.checkGLError();
+			
+			if (Visage.trace) Visage.log.finest("Rendering");
+			if (tcbo == Integer.MAX_VALUE) {
+				glDrawArrays(GL_QUADS, 0, vertices.length/5);
+			} else {
+				glDrawArrays(GL_QUADS, 0, vertices.length/6);
+			}
+			Errors.checkGLError();
 			
 			/*glBegin(GL_QUADS);
 			for (int i = 0; i < vertices.length/3; i++) {

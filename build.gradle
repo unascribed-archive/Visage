@@ -5,7 +5,7 @@ plugins {
     id 'eclipse'
     id 'idea'
 
-    id 'com.stehno.natives' version '0.2.3'
+    id 'com.stehno.natives' version '0.2.4'
     id 'com.github.hierynomus.license' version '0.11.0'
 }
 
@@ -13,7 +13,7 @@ defaultTasks 'clean', 'licenseFormat', 'build'
 
 // Project information
 group = 'com.surgeplay'
-version = '1.2.5-SNAPSHOT'
+version = '1.2.6-SNAPSHOT'
 archivesBaseName = 'Visage'
 mainClassName = 'com.surgeplay.visage.Visage'
 
@@ -43,6 +43,7 @@ dependencies {
 	compile 'com.google.code.gson:gson:2.2.4'
 	compile 'org.fusesource.jansi:jansi:1.11'
 	compile 'org.spacehq:mcauthlib:1.0-SNAPSHOT'
+	compile 'com.github.kerner1000:javapng:2.1.2'
 	
 	compile "org.lwjgl.lwjgl:lwjgl:$lwjgl"
 	compile "org.lwjgl.lwjgl:lwjgl_util:$lwjgl"
