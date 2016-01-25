@@ -51,6 +51,7 @@ import com.rabbitmq.client.QueueingConsumer.Delivery;
 import com.typesafe.config.Config;
 
 public class VisageSlave extends Thread implements VisageRunner {
+	public static boolean explodeOnError = false;
 	protected Config config;
 	protected SessionService session = new SessionService();
 	protected Gson gson = new Gson();
@@ -79,6 +80,7 @@ public class VisageSlave extends Thread implements VisageRunner {
 		}
 		Visage.log.info("Slave name is '"+name+"'");
 		queue = config.getString("rabbitmq.queue");
+		explodeOnError = config.hasPath("explode-on-error") && config.getBoolean("explode-on-error");
 	}
 	
 	@Override

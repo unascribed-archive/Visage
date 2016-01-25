@@ -27,9 +27,10 @@ ext {
 // Project repositories
 repositories {
     mavenCentral()
+    mavenLocal()
 	maven {
-		name 'gameminers'
-		url 'http://mvn.gameminers.com/artifactory/repo'
+		name 'spacehq'
+		url 'http://repo.spacehq.org/content/repositories/snapshots/'
 	}
 }
 
@@ -41,7 +42,7 @@ dependencies {
 	compile 'com.rabbitmq:amqp-client:3.5.1'
 	compile 'com.google.code.gson:gson:2.2.4'
 	compile 'org.fusesource.jansi:jansi:1.11'
-	compile 'org.spacehq:mcauthlib:1.0-gm-fixed'
+	compile 'org.spacehq:mcauthlib:1.0-SNAPSHOT'
 	
 	compile "org.lwjgl.lwjgl:lwjgl:$lwjgl"
 	compile "org.lwjgl.lwjgl:lwjgl_util:$lwjgl"

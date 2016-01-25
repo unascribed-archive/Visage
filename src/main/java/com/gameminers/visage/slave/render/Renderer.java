@@ -48,7 +48,7 @@ import com.google.common.collect.Lists;
 import static org.lwjgl.opengl.ARBVertexBufferObject.*;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL12.*;
-import static org.lwjgl.opengl.Util.checkGLError;
+import static com.gameminers.visage.slave.util.Errors.checkGLError;
 import static org.lwjgl.util.glu.GLU.gluPerspective;
 
 public abstract class Renderer {
