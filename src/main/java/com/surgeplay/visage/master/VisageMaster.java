@@ -171,10 +171,9 @@ public class VisageMaster extends Thread implements VisageRunner {
 			}
 			String queue = config.getString("rabbitmq.queue");
 			
-			if (Visage.debug) Visage.log.finer("Downloading default skins");
 			Closer closer = Closer.create();
-			steve = ByteStreams.toByteArray(closer.register(URLUtils.constantURL("https://minecraft.net/images/steve.png").openStream()));
-			alex = ByteStreams.toByteArray(closer.register(URLUtils.constantURL("https://minecraft.net/images/alex.png").openStream()));
+			steve = ByteStreams.toByteArray(closer.register(ClassLoader.getSystemResourceAsStream("steve.png")));
+			alex = ByteStreams.toByteArray(closer.register(ClassLoader.getSystemResourceAsStream("alex.png")));
 			closer.close();
 			
 			conn = factory.newConnection();
