@@ -1,12 +1,12 @@
 plugins {
-    id 'java'
+	id 'java'
 	id 'application'
 	
-    id 'eclipse'
-    id 'idea'
+	id 'eclipse'
+	id 'idea'
 
-    id 'com.stehno.natives' version '0.2.4'
-    id 'com.github.hierynomus.license' version '0.11.0'
+	id 'com.stehno.natives' version '0.2.4'
+	id 'com.github.hierynomus.license' version '0.11.0'
 }
 
 defaultTasks 'clean', 'licenseFormat', 'build'
@@ -21,13 +21,13 @@ sourceCompatibility = 1.7
 targetCompatibility = 1.7
 
 ext {
-    lwjgl = '2.9.3'
+	lwjgl = '2.9.3'
 }
 
 // Project repositories
 repositories {
-    mavenCentral()
-    mavenLocal()
+	mavenCentral()
+	mavenLocal()
 	maven {
 		name 'spacehq'
 		url 'http://repo.spacehq.org/content/repositories/snapshots/'
@@ -36,7 +36,7 @@ repositories {
 
 // Project dependencies
 dependencies {
-    compile 'com.google.guava:guava:18.0'
+	compile 'com.google.guava:guava:18.0'
 	compile 'net.sf.jopt-simple:jopt-simple:4.5'
 	compile 'com.typesafe:config:1.2.1'
 	compile 'com.rabbitmq:amqp-client:3.5.1'
@@ -47,21 +47,23 @@ dependencies {
 	
 	compile "org.lwjgl.lwjgl:lwjgl:$lwjgl"
 	compile "org.lwjgl.lwjgl:lwjgl_util:$lwjgl"
-    
+	
 	compile 'org.eclipse.jetty:jetty-server:9.3.0.RC0'
 	compile 'redis.clients:jedis:2.6.2'
+	
+	compile 'org.isomorphism:token-bucket:1.6'
 }
 
 // Read source files using UTF-8
 tasks.withType(JavaCompile) {
-    options.encoding = 'UTF-8'
-    options.deprecation = true
+	options.encoding = 'UTF-8'
+	options.deprecation = true
 }
 
 natives {
-    jars = configurations.compile.collectMany {
-        it.name.contains('natives') ? [it.name] : []
-    }
+	jars = configurations.compile.collectMany {
+		it.name.contains('natives') ? [it.name] : []
+	}
 }
 
 run {
@@ -75,7 +77,7 @@ startScripts {
 	}
 }
 applicationDistribution.from("conf") {
-    into "conf"
+	into "conf"
 }
 applicationDistribution.from("www") {
 	into "www"
@@ -91,10 +93,10 @@ applicationDistribution.exclude {
 // License header formatting
 license {
 	exclude 'src/main/java/org/spacehq/mc/auth/SessionService.java'
-    sourceSets = project.sourceSets
-    ignoreFailures false
-    strictCheck true
-    mapping {
-        java = 'SLASHSTAR_STYLE'
-    }
+	sourceSets = project.sourceSets
+	ignoreFailures false
+	strictCheck true
+	mapping {
+		java = 'SLASHSTAR_STYLE'
+	}
 }

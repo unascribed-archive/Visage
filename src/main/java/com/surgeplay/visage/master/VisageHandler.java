@@ -44,6 +44,8 @@ import joptsimple.internal.Strings;
 
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
+import org.isomorphism.util.TokenBucket;
+import org.isomorphism.util.TokenBuckets;
 import org.spacehq.mc.auth.GameProfile;
 import org.spacehq.mc.auth.GameProfileRepository;
 import org.spacehq.mc.auth.ProfileLookupCallback;
@@ -60,6 +62,8 @@ import org.spacehq.mc.auth.util.URLUtils;
 import redis.clients.jedis.Jedis;
 
 import com.google.common.base.Charsets;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.io.ByteStreams;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -92,6 +96,15 @@ public class VisageHandler extends AbstractHandler {
 	private final String baseUrl;
 	private final EnumSet<RenderMode> allowedModes = EnumSet.noneOf(RenderMode.class);
 	private final String allowedModesS;
+	private final boolean doRatelimit;
+	private final int defaultBurst;
+	private final double defaultRate;
+	private final int relaxBurst;
+	private final double relaxRate;
+	private final Map<String, List<Pattern>> whitelisted = Maps.newHashMap();
+	private final Map<String, List<Pattern>> relaxed = Maps.newHashMap();
+	
+	private Map<String, TokenBucket> tokenBuckets = Maps.newHashMap();
 	
 	public VisageHandler(VisageMaster master) {
 		this.master = master;
@@ -115,6 +128,11 @@ public class VisageHandler extends AbstractHandler {
 		resolverTtlMillis = master.config.getDuration("redis.resolver-ttl", TimeUnit.MILLISECONDS);
 		skinTtlMillis = master.config.getDuration("redis.skin-ttl", TimeUnit.MILLISECONDS);
 		baseUrl = master.config.getString("base-url");
+		doRatelimit = master.config.getBoolean("ratelimit.enabled");
+		defaultBurst = master.config.getInt("ratelimit.burst");
+		defaultRate = master.config.getDouble("ratelimit.rate");
+		relaxBurst = master.config.getInt("ratelimit.relaxed-burst");
+		relaxRate = master.config.getDouble("ratelimit.relaxed-rate");
 		List<String> modes = master.config.getStringList("modes");
 		for (String s : modes) {
 			try {
@@ -122,13 +140,83 @@ public class VisageHandler extends AbstractHandler {
 			} catch (IllegalArgumentException ignore) {}
 		}
 		allowedModesS = Strings.join(modes, ", ");
+		compileList(master.config.getStringList("ratelimit.whitelist"), whitelisted);
+		compileList(master.config.getStringList("ratelimit.relaxed"), relaxed);
 	}
+	
+	
+	private void compileList(List<String> in, Map<String, List<Pattern>> out) {
+		for (String s : in) {
+			int idx = s.indexOf(':');
+			String kind = (idx == -1 ? "ip" : s.substring(0, idx));
+			String key = s.substring(idx+1); // -1 + 1 = 0
+			List<Pattern> li = out.get(kind);
+			if (li == null) {
+				li = Lists.newArrayList();
+				out.put(kind, li);
+			}
+			if (kind.equals("ip")) {
+				li.add(Pattern.compile("^"+Pattern.quote(key)+"$"));
+			} else {
+				li.add(Pattern.compile(key));
+			}
+		}
+	}
+
+
+	private boolean ratelimited(String kind, String key) {
+		if (key == null) return false;
+		String tbKey = kind+":"+key;
+		TokenBucket tb;
+		if (tokenBuckets.containsKey(tbKey)) {
+			tb = tokenBuckets.get(tbKey);
+			if (tb == null) return false;
+		} else {
+			double rate = defaultRate;
+			int burst = defaultBurst;
+			List<Pattern> whitelist = whitelisted.get(kind);
+			if (whitelist != null) {
+				for (Pattern p : whitelist) {
+					if (p.matcher(key).matches()) {
+						tokenBuckets.put(tbKey, null);
+						return false;
+					}
+				}
+			}
+			List<Pattern> relax = relaxed.get(kind);
+			if (relax != null) {
+				for (Pattern p : relax) {
+					if (p.matcher(key).matches()) {
+						rate = relaxRate;
+						burst = relaxBurst;
+					}
+				}
+			}
+			tb = TokenBuckets.builder()
+					.withCapacity(burst)
+					.withFixedIntervalRefillStrategy(1, (int)(rate*1000), TimeUnit.MILLISECONDS)
+					.build();
+			tokenBuckets.put(tbKey, tb);
+		}
+		return !tb.tryConsume();
+	}
+	
 	@Override
 	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
 		baseRequest.setHandled(true);
 		if (!"GET".equals(request.getMethod())) {
 			response.sendError(405);
 			return;
+		}
+		if (doRatelimit) {
+			if (ratelimited("ip", request.getRemoteAddr())) {
+				response.sendRedirect("/2fast.png");
+				return;
+			}
+			if (ratelimited("referer", request.getHeader("Referer"))) {
+				response.sendRedirect("/2fast.png");
+				return;
+			}
 		}
 		RenderMode mode = RenderMode.FULL;
 		String subject;
