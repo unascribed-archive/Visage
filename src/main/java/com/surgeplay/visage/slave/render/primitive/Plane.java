@@ -24,11 +24,36 @@
  */
 package com.surgeplay.visage.slave.render.primitive;
 
+import static org.lwjgl.opengl.ARBBufferObject.GL_STATIC_DRAW_ARB;
+import static org.lwjgl.opengl.ARBBufferObject.glBindBufferARB;
+import static org.lwjgl.opengl.ARBBufferObject.glBufferDataARB;
+import static org.lwjgl.opengl.ARBBufferObject.glGenBuffersARB;
+import static org.lwjgl.opengl.ARBVertexBufferObject.GL_ARRAY_BUFFER_ARB;
+
+import java.nio.FloatBuffer;
+
+import org.lwjgl.BufferUtils;
+
+import com.surgeplay.visage.Visage;
 import com.surgeplay.visage.slave.render.Renderer;
 
 public class Plane extends Primitive {
+	private int tcbo = Integer.MAX_VALUE;
+	
 	@Override
 	public void render(Renderer renderer) {
-		doRender(renderer, renderer.planeVbo, Integer.MAX_VALUE, Renderer.planeVertices);
+		if (tcbo == Integer.MAX_VALUE) {
+			if (Visage.debug) Visage.log.finer("Creating texture coord buffer");
+			tcbo = glGenBuffersARB();
+			FloatBuffer uv = BufferUtils.createFloatBuffer(texture.u.length+texture.v.length);
+			for (int i = 0; i < texture.u.length; i++) {
+				uv.put(texture.u[i]);
+				uv.put(texture.v[i]);
+			}
+			uv.flip();
+			glBindBufferARB(GL_ARRAY_BUFFER_ARB, tcbo);
+			glBufferDataARB(GL_ARRAY_BUFFER_ARB, uv, GL_STATIC_DRAW_ARB);
+		}
+		doRender(renderer, renderer.planeVbo, tcbo, Renderer.planeVertices);
 	}
 }

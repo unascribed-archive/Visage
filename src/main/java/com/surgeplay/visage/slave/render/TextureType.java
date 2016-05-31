@@ -26,7 +26,9 @@ package com.surgeplay.visage.slave.render;
 
 public enum TextureType {
 	NONE,
-	SHADOW,
+	ALL(
+		0, 0, 64, 64
+	),
 	HEAD(
 		// Front (Red)
 		8, 8, 8, 8,
@@ -251,6 +253,55 @@ public enum TextureType {
 		// Right (Green)
 		48, 52, 4, 12
 	),
+	
+	HEAD_FRONT(
+		8, 8, 8, 8
+	),
+	HEAD2_FRONT(
+		40, 8, 8, 8
+	),
+	BODY_FRONT(
+		20, 20, 8, 12
+	),
+	BODY2_FRONT(
+		20, 36, 8, 12
+	),
+	RLEG_FRONT(
+		4, 20, 4, 12
+	),
+	RLEG2_FRONT(
+		4, 36, 4, 12
+	),
+	LLEG_FRONT(
+		20, 52, 4, 12
+	),
+	LLEG2_FRONT(
+		4, 52, 4, 12
+	),
+	RARM_FRONT(
+		44, 20, 4, 12
+	),
+	RARM_SLIM_FRONT(
+		45, 20, 3, 12
+	),
+	RARM2_FRONT(
+		44, 36, 4, 12
+	),
+	RARM2_SLIM_FRONT(
+		45, 36, 3, 12
+	),
+	LARM_FRONT(
+		36, 52, 4, 12
+	),
+	LARM_SLIM_FRONT(
+		37, 52, 3, 12
+	),
+	LARM2_FRONT(
+		52, 52, 4, 12
+	),
+	LARM2_SLIM_FRONT(
+		53, 52, 3, 12
+	),
 	;
 	
 	public final float[] u = new float[24];
@@ -275,17 +326,19 @@ public enum TextureType {
 			int edgeX = x + assorted[idx+2];
 			int edgeY = y + assorted[idx+3];
 			
-			u[idx  ] = div(tex_w,     x);
-			v[idx  ] = div(tex_h, edgeY);
+			// slightly shrink the box to prevent texture bleeding
 			
-			u[idx+1] = div(tex_w, edgeX);
-			v[idx+1] = div(tex_h, edgeY);
+			u[idx  ] = div(tex_w,     x)+0.0001f;
+			v[idx  ] = div(tex_h, edgeY)-0.0001f;
 			
-			u[idx+2] = div(tex_w, edgeX);
-			v[idx+2] = div(tex_h,     y);
+			u[idx+1] = div(tex_w, edgeX)-0.0001f;
+			v[idx+1] = div(tex_h, edgeY)-0.0001f;
 			
-			u[idx+3] = div(tex_w,     x);
-			v[idx+3] = div(tex_h,     y);
+			u[idx+2] = div(tex_w, edgeX)-0.0001f;
+			v[idx+2] = div(tex_h,     y)+0.0001f;
+			
+			u[idx+3] = div(tex_w,     x)+0.0001f;
+			v[idx+3] = div(tex_h,     y)+0.0001f;
 		}
 	}
 

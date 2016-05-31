@@ -114,13 +114,13 @@ public abstract class Renderer {
 	};
 	public static final float[] planeVertices = {
 		-1.0f,  0.0f,  1.0f,
-		 0.000f, 0.000f,
+		 0, 0, 0,
 		 1.0f,  0.0f,  1.0f,
-		 1.000f, 0.000f,
+		 0, 0, 0,
 		 1.0f,  0.0f, -1.0f,
-		 1.000f, 1.000f,
+		 0, 0, 0,
 		-1.0f,  0.0f, -1.0f,
-		 0.000f, 1.000f,
+		 0, 0, 0,
 	};
 	public final String name = getClass().getSimpleName();
 	public Pbuffer pbuffer;
@@ -296,7 +296,8 @@ public abstract class Renderer {
 		glMatrixMode(GL_MODELVIEW);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_CULL_FACE);
-		
+		prims.clear();
+		initPrimitives();
 	}
 	public void finish() throws LWJGLException {
 		pbuffer.releaseContext();

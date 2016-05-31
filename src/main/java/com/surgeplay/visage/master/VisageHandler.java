@@ -263,7 +263,7 @@ public class VisageHandler extends AbstractHandler {
 				height *= 1.625;
 				sendPermanentRedirect(baseUrl+"/full/"+height+"/"+subject, response);
 				return;
-			} else if ("FULL".equalsIgnoreCase(modeStr)) {
+			} else if ("FULL".equalsIgnoreCase(modeStr) || "FRONTFULL".equalsIgnoreCase(modeStr)) {
 				width = (int)Math.ceil(width / 1.625f);
 			} else if ("HELM".equalsIgnoreCase(modeStr)) {
 				sendPermanentRedirect(baseUrl+"/face/"+height+"/"+subject, response);
@@ -280,7 +280,7 @@ public class VisageHandler extends AbstractHandler {
 			response.sendError(400, "Invalid render mode '"+modeStr+"' - must be one of "+allowedModesS);
 			return;
 		}
-		if (mode == RenderMode.FULL) {
+		if (mode == RenderMode.FULL || mode == RenderMode.FRONTFULL) {
 			int clamped = Math.max(minSize, Math.min(height, (int)(maxSize*1.625)));
 			if (clamped != height) {
 				sendPermanentRedirect(baseUrl+"/"+modeStr+"/"+clamped+"/"+subject, response);

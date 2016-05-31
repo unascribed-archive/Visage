@@ -68,7 +68,7 @@ public abstract class Primitive {
 			if (textured) {
 				if (Visage.trace) Visage.log.finest("Enabling texturing - texture "+texture);
 				glEnable(GL_TEXTURE_2D);
-				glBindTexture(GL_TEXTURE_2D, texture == TextureType.SHADOW ? renderer.shadowTexture : renderer.texture);
+				glBindTexture(GL_TEXTURE_2D, texture == TextureType.ALL ? renderer.shadowTexture : renderer.texture);
 			} else {
 				if (Visage.trace) Visage.log.finest("Disabling texturing");
 				glDisable(GL_TEXTURE_2D);

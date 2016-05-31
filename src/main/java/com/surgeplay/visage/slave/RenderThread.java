@@ -25,13 +25,11 @@
 package com.surgeplay.visage.slave;
 
 import java.awt.Graphics2D;
-import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.ArrayDeque;
@@ -45,7 +43,6 @@ import javax.imageio.ImageIO;
 import org.spacehq.mc.auth.GameProfile;
 
 import com.google.common.collect.Maps;
-import com.google.common.io.Files;
 import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.QueueingConsumer.Delivery;
 import com.sixlegs.png.PngImage;
@@ -194,18 +191,6 @@ public class RenderThread extends Thread {
 		if (Visage.trace) Visage.log.finest("Got skin");
 		if (Visage.trace) Visage.log.finest(mode.name());
 		switch (mode) {
-			case FACE:
-				width /= supersampling;
-				height /= supersampling;
-				out = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-				int border = width/24;
-				Image face = skin.getSubimage(8, 8, 8, 8).getScaledInstance(width-(border*2), height-(border*2), Image.SCALE_FAST);
-				Image helm = skin.getSubimage(40, 8, 8, 8).getScaledInstance(width, height, Image.SCALE_FAST);
-				Graphics2D g2d = out.createGraphics();
-				g2d.drawImage(face, border, border, null);
-				g2d.drawImage(helm, 0, 0, null);
-				g2d.dispose();
-				break;
 			case SKIN:
 				out = skin;
 				break;

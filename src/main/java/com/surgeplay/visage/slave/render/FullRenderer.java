@@ -47,7 +47,7 @@ public class FullRenderer extends Renderer {
 		shadow.y = 7f;
 		shadow.scaleX = 1.85f;
 		shadow.scaleZ = 0.85f;
-		shadow.texture = TextureType.SHADOW;
+		shadow.texture = TextureType.ALL;
 		shadow.lit = false;
 		shadow.alphaMode = AlphaMode.FULL;
 		stage.members.add(shadow);

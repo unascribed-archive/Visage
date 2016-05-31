@@ -45,7 +45,7 @@ public class HeadRenderer extends Renderer {
 		Plane shadow = new Plane();
 		shadow.y = 1;
 		shadow.scaleX = shadow.scaleZ = 1.95f;
-		shadow.texture = TextureType.SHADOW;
+		shadow.texture = TextureType.ALL;
 		shadow.lit = false;
 		stage.members.add(shadow);
 		Cube head = new Cube();

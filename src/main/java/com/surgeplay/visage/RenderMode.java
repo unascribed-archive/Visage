@@ -27,16 +27,22 @@ package com.surgeplay.visage;
 import java.util.logging.Level;
 
 import com.surgeplay.visage.slave.render.BustRenderer;
+import com.surgeplay.visage.slave.render.FaceRenderer;
+import com.surgeplay.visage.slave.render.FrontFullRenderer;
+import com.surgeplay.visage.slave.render.FrontRenderer;
 import com.surgeplay.visage.slave.render.FullRenderer;
 import com.surgeplay.visage.slave.render.HeadRenderer;
 import com.surgeplay.visage.slave.render.Renderer;
 
 public enum RenderMode {
-	FACE(null),
+	FACE(FaceRenderer.class),
 	HEAD(HeadRenderer.class),
 	BUST(BustRenderer.class),
 	FULL(FullRenderer.class),
-	SKIN(null);
+	SKIN(null),
+	FRONT(FrontRenderer.class),
+	FRONTFULL(FrontFullRenderer.class),
+	;
 	private final Class<? extends Renderer> renderer;
 	private RenderMode(Class<? extends Renderer> renderer) {
 		this.renderer = renderer;
