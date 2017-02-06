@@ -31,7 +31,7 @@ Please note that the default `conf/master.conf` file is set up for development u
 includes a lot of information in the headers. You should open the file and tweak the parameters to your particular
 use-case.
 
-You can download a ready-to-run Visage distribution at [the GitHub releases page](https://github.com/AesenV/Visage/releases).
+You can download a ready-to-run Visage distribution at [the GitHub releases page](https://github.com/surgeplay/Visage/releases).
 Extract it wherever, `cd` to the directory, and run `./bin/Visage --master`. **Windows is unsupported. Use it at your own peril.**
 
 Slaves just need to be pointed at your RabbitMQ server, which brings us to...
