@@ -31,7 +31,7 @@ Please note that the default `conf/master.conf` file is set up for development u
 includes a lot of information in the headers. You should open the file and tweak the parameters to your particular
 use-case.
 
-You can download a ready-to-run Visage distribution at [the GitHub releases page](https://github.com/AesenV/Visage/releases).
+You can download a ready-to-run Visage distribution at [the GitHub releases page](https://github.com/surgeplay/Visage/releases).
 Extract it wherever, `cd` to the directory, and run `./bin/Visage --master`. **Windows is unsupported. Use it at your own peril.**
 
 Slaves just need to be pointed at your RabbitMQ server, which brings us to...
@@ -40,13 +40,13 @@ Slaves just need to be pointed at your RabbitMQ server, which brings us to...
 A Visage slave can be connected to an existing Visage master by simply editing the `conf/slave.conf` file to point to the
 RabbitMQ server the sysadmin gives you.
 
-You can download a ready-to-run Visage distribution at [the GitHub releases page](https://github.com/AesenV/Visage/releases).
+You can download a ready-to-run Visage distribution at [the GitHub releases page](https://github.com/surgeplay/Visage/releases).
 Extract it wherever, `cd` to the directory, and run `./bin/Visage`. Slave mode is the default.
 **Windows is unsupported. Use it at your own peril.**
 
 If you want to get an idea of how well Visage will run on your hardware, you can run `./bin/Visage --benchmark`.
 It will run a series of 24 benchmarks with varying render parameters; all of the renders are players with lighting,
-shadows, and all secondary layers enabled. It uses a [test skin](https://github.com/AesenV/Visage/blob/master/src/main/resources/test_skin.png)
+shadows, and all secondary layers enabled. It uses a [test skin](https://github.com/surgeplay/Visage/blob/master/src/main/resources/test_skin.png)
 that wasn't chosen for any particular reason.
 After it finishes, it will give you a number. Here's the results of some benchmarks:
 
