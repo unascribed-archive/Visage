@@ -21,12 +21,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.surgeplay.visage.util;
+package com.surgeplay.visage.distributor.exception;
 
-import java.util.UUID;
-
-public class UUIDs {
-	public static boolean isAlex(UUID uuid) {
-		return (uuid.hashCode() & 1) == 1;
+public class NoRenderersAvailableException extends Exception {
+	private static final long serialVersionUID = -1249873765125395486L;
+	public NoRenderersAvailableException() {
+		super();
 	}
+
+	public NoRenderersAvailableException(String message, Throwable cause,
+			boolean enableSuppression, boolean writableStackTrace) {
+		super(message, cause, enableSuppression, writableStackTrace);
+	}
+
+	public NoRenderersAvailableException(String message, Throwable cause) {
+		super(message, cause);
+	}
+
+	public NoRenderersAvailableException(String message) {
+		super(message);
+	}
+
+	public NoRenderersAvailableException(Throwable cause) {
+		super(cause);
+	}
+
 }

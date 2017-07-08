@@ -21,12 +21,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.surgeplay.visage.util;
+package com.surgeplay.visage.renderer.render;
 
-import java.util.UUID;
+import com.surgeplay.visage.renderer.RenderContext;
 
-public class UUIDs {
-	public static boolean isAlex(UUID uuid) {
-		return (uuid.hashCode() & 1) == 1;
+public class BustSlimRenderer extends BustRenderer {
+
+	public BustSlimRenderer(RenderContext owner) {
+		super(owner, true);
 	}
+
 }

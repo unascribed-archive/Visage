@@ -1,8 +1,7 @@
 /*
- * Visage
- * Copyright (c) 2015-2016, Aesen Vismea <aesen@unascribed.com>
- *
  * The MIT License
+ *
+ * Copyright (c) 2015-2017, William Thompson (unascribed)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,31 +25,68 @@ package com.surgeplay.visage;
 
 import java.util.logging.Level;
 
-import com.surgeplay.visage.slave.render.BustRenderer;
-import com.surgeplay.visage.slave.render.FaceRenderer;
-import com.surgeplay.visage.slave.render.FrontFullRenderer;
-import com.surgeplay.visage.slave.render.FrontRenderer;
-import com.surgeplay.visage.slave.render.FullRenderer;
-import com.surgeplay.visage.slave.render.HeadRenderer;
-import com.surgeplay.visage.slave.render.Renderer;
+import com.surgeplay.visage.renderer.RenderContext;
+import com.surgeplay.visage.renderer.render.BustRenderer;
+import com.surgeplay.visage.renderer.render.BustSlimRenderer;
+import com.surgeplay.visage.renderer.render.FaceRenderer;
+import com.surgeplay.visage.renderer.render.FrontFullRenderer;
+import com.surgeplay.visage.renderer.render.FrontRenderer;
+import com.surgeplay.visage.renderer.render.FrontFullSlimRenderer;
+import com.surgeplay.visage.renderer.render.FrontSlimRenderer;
+import com.surgeplay.visage.renderer.render.FullRenderer;
+import com.surgeplay.visage.renderer.render.FullSlimRenderer;
+import com.surgeplay.visage.renderer.render.HeadRenderer;
+import com.surgeplay.visage.renderer.render.Renderer;
 
 public enum RenderMode {
 	FACE(FaceRenderer.class),
 	HEAD(HeadRenderer.class),
+	
 	BUST(BustRenderer.class),
+	BUST_SLIM(BustSlimRenderer.class),
+	
 	FULL(FullRenderer.class),
-	SKIN(null),
+	FULL_SLIM(FullSlimRenderer.class),
+	
 	FRONT(FrontRenderer.class),
+	FRONT_SLIM(FrontSlimRenderer.class),
+	
 	FRONTFULL(FrontFullRenderer.class),
+	FRONTFULL_SLIM(FrontFullSlimRenderer.class),
+	
+	SKIN(null),
 	;
+	
 	private final Class<? extends Renderer> renderer;
+	
 	private RenderMode(Class<? extends Renderer> renderer) {
 		this.renderer = renderer;
 	}
-	public Renderer newRenderer() {
+	
+	public boolean isTall() {
+		switch (this) {
+			case FULL: return true;
+			case FULL_SLIM: return true;
+			case FRONTFULL: return true;
+			case FRONTFULL_SLIM: return true;
+			default: return false;
+		}
+	}
+	
+	public RenderMode slim() {
+		switch (this) {
+			case BUST: return BUST_SLIM;
+			case FULL: return FULL_SLIM;
+			case FRONT: return FRONT_SLIM;
+			case FRONTFULL: return FRONTFULL_SLIM;
+			default: return this;
+		}
+	}
+	
+	public Renderer newRenderer(RenderContext ctx) {
 		if (renderer == null) return null;
 		try {
-			return renderer.newInstance();
+			return renderer.getConstructor(RenderContext.class).newInstance(ctx);
 		} catch (Exception e) {
 			Visage.log.log(Level.SEVERE, "Could not instanciate Renderer for "+this, e);
 			return null;

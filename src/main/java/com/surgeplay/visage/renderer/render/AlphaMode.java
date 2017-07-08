@@ -21,12 +21,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.surgeplay.visage.util;
+package com.surgeplay.visage.renderer.render;
 
-import java.util.UUID;
-
-public class UUIDs {
-	public static boolean isAlex(UUID uuid) {
-		return (uuid.hashCode() & 1) == 1;
-	}
+public enum AlphaMode {
+	/**
+	 * Render with full alpha transparency.
+	 */
+	FULL,
+	/**
+	 * Render with 1-bit alpha transparency.
+	 */
+	MASK,
+	/**
+	 * Render with no alpha transparency.
+	 */
+	NONE
 }

@@ -1,8 +1,7 @@
 /*
- * Visage
- * Copyright (c) 2015-2016, Aesen Vismea <aesen@unascribed.com>
- *
  * The MIT License
+ *
+ * Copyright (c) 2015-2017, William Thompson (unascribed)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,19 +36,20 @@ import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
 
-import com.surgeplay.visage.benchmark.VisageBenchmark;
-import com.surgeplay.visage.master.VisageMaster;
-import com.surgeplay.visage.slave.VisageSlave;
+import com.surgeplay.visage.distributor.VisageDistributor;
+import com.surgeplay.visage.renderer.VisageRenderer;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 
 public class Visage {
-	public static final String VERSION = "1.3.1";
+	public static final String VERSION = "2.0.0";
 	public static final Formatter logFormat = new VisageFormatter();
 	public static final Logger log = Logger.getLogger("com.surgeplay.visage");
+	
 	public static boolean debug, trace;
 	public static boolean ansi;
 	public static VisageRunner runner;
+	
 	public static void main(String[] args) throws Exception {
 		AnsiConsole.systemInstall();
 		Thread.currentThread().setName("Main thread");
@@ -72,37 +72,40 @@ public class Visage {
 			con.setLevel(Level.FINE);
 		}
 		OptionParser parser = new OptionParser();
-		parser.acceptsAll(Arrays.asList("master", "m"), "Start Visage as a master");
-		parser.acceptsAll(Arrays.asList("slave", "s"), "Start Visage as a slave");
-		parser.acceptsAll(Arrays.asList("benchmark", "b"), "Run a benchmark on the current machine");
+		// master/slave terminology kept for compatibility
+		parser.acceptsAll(Arrays.asList("distributor", "d", "master", "m"), "Start Visage as a distributor");
+		parser.acceptsAll(Arrays.asList("renderer", "r", "slave", "s"), "Start Visage as a renderer");
 		OptionSpec<File> fileSwitch;
 		fileSwitch = parser.acceptsAll(Arrays.asList("config", "c"), "Load the given config file instead of the default conf/[mode].conf").withRequiredArg().ofType(File.class);
 		OptionSet set = parser.parse(args);
 		File confFile = fileSwitch.value(set);
-		if (set.has("master")) {
+		if (set.has("distributor")) {
 			if (confFile == null) {
-				confFile = new File("conf/master.conf");
+				confFile = new File("conf/distributor.conf");
+				if (!confFile.exists()) {
+					confFile = new File("conf/master.conf");
+				}
 			}
 			Config conf = ConfigFactory.parseFile(confFile);
 			ansi = conf.getBoolean("ansi");
-			log.info("Starting Visage v"+VERSION+" as a master");
-			runner = new VisageMaster(conf);
-		} else if (set.has("benchmark")) {
-			ansi = true;
-			log.info("Running a benchmark...");
-			runner = new VisageBenchmark();
+			log.info("Starting Visage v"+VERSION+" as a distributor");
+			runner = new VisageDistributor(conf);
 		} else {
 			if (confFile == null) {
-				confFile = new File("conf/slave.conf");
+				confFile = new File("conf/renderer.conf");
+				if (!confFile.exists()) {
+					confFile = new File("conf/slave.conf");
+				}
 			}
 			Config conf = ConfigFactory.parseFile(confFile);
 			ansi = conf.getBoolean("ansi");
-			log.info("Starting Visage v"+VERSION+" as a slave");
-			runner = new VisageSlave(conf);
+			log.info("Starting Visage v"+VERSION+" as a renderer");
+			runner = new VisageRenderer(conf);
 		}
-		if (debug || trace) {
-			log.warning("You have debug and/or trace logging enabled. This will severely impact performance.");
+		if (trace) {
+			log.warning("You have trace logging enabled. This will impact performance.");
 		}
+		log.info("Reading configuration from "+confFile);
 		log.info("Press Ctrl+C to shutdown Visage.");
 		runner.start();
 		Runtime.getRuntime().addShutdownHook(new Thread() {

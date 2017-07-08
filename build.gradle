@@ -1,30 +1,36 @@
 plugins {
-	id 'java'
-	id 'application'
-	
-	id 'eclipse'
-	id 'idea'
-
-	id 'com.stehno.natives' version '0.2.4'
-	id 'com.github.hierynomus.license' version '0.11.0'
+	id 'net.minecrell.licenser' version '0.3'
+	id "us.kirchmeier.capsule" version "1.0.2"
 }
 
-defaultTasks 'clean', 'licenseFormat', 'build'
+apply plugin: 'java'
 
-// Project information
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+
 group = 'com.surgeplay'
-version = '1.3.1-SNAPSHOT'
+def commits = 'git rev-list --count HEAD'.execute().in.text.trim();
+def dirty = !'git diff-index HEAD'.execute().in.text.trim().isEmpty();
+version = '2.0.'+commits+(dirty ? '-dirty' : '');
 archivesBaseName = 'Visage'
-mainClassName = 'com.surgeplay.visage.Visage'
 
-sourceCompatibility = 1.7
-targetCompatibility = 1.7
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
 
-ext {
-	lwjgl = '2.9.3'
+import org.gradle.internal.os.OperatingSystem
+
+switch ( OperatingSystem.current() ) {
+	case OperatingSystem.WINDOWS:
+		project.ext.lwjglNatives = "natives-windows"
+		break
+	case OperatingSystem.LINUX:
+		project.ext.lwjglNatives = "natives-linux"
+	break
+	case OperatingSystem.MAC_OS:
+		project.ext.lwjglNatives = "natives-macos"
+		break
 }
 
-// Project repositories
 repositories {
 	mavenCentral()
 	mavenLocal()
@@ -34,69 +40,40 @@ repositories {
 	}
 }
 
-// Project dependencies
+project.ext.lwjglVersion = "3.1.2"
+
 dependencies {
-	compile 'com.google.guava:guava:18.0'
-	compile 'net.sf.jopt-simple:jopt-simple:4.5'
-	compile 'com.typesafe:config:1.2.1'
-	compile 'com.rabbitmq:amqp-client:3.5.1'
-	compile 'com.google.code.gson:gson:2.2.4'
-	compile 'org.fusesource.jansi:jansi:1.11'
+	compile 'com.google.guava:guava:22.0'
+	compile 'net.sf.jopt-simple:jopt-simple:5.0.3'
+	compile 'com.typesafe:config:1.3.1'
+	compile 'com.rabbitmq:amqp-client:4.1.1'
+	compile 'com.google.code.gson:gson:2.8.1'
+	compile 'org.fusesource.jansi:jansi:1.16'
 	compile 'org.spacehq:mcauthlib:1.0-SNAPSHOT'
 	compile 'com.github.kerner1000:javapng:2.1.2'
+	compile 'org.slf4j:slf4j-jdk14:1.7.25'
 	
-	compile "org.lwjgl.lwjgl:lwjgl:$lwjgl"
-	compile "org.lwjgl.lwjgl:lwjgl_util:$lwjgl"
+	compile "org.lwjgl:lwjgl:${lwjglVersion}"
+	compile "org.lwjgl:lwjgl-glfw:${lwjglVersion}"
+	compile "org.lwjgl:lwjgl-jemalloc:${lwjglVersion}"
+	compile "org.lwjgl:lwjgl-opengl:${lwjglVersion}"
+	compile "org.lwjgl:lwjgl-stb:${lwjglVersion}"
 	
-	compile 'org.eclipse.jetty:jetty-server:9.3.0.RC0'
-	compile 'redis.clients:jedis:2.6.2'
+	runtime "org.lwjgl:lwjgl:${lwjglVersion}:${lwjglNatives}"
+	runtime "org.lwjgl:lwjgl-glfw:${lwjglVersion}:${lwjglNatives}"
+	runtime "org.lwjgl:lwjgl-jemalloc:${lwjglVersion}:${lwjglNatives}"
+	runtime "org.lwjgl:lwjgl-opengl:${lwjglVersion}:${lwjglNatives}"
+	runtime "org.lwjgl:lwjgl-stb:${lwjglVersion}:${lwjglNatives}"
 	
-	compile 'org.isomorphism:token-bucket:1.6'
+	compile 'org.eclipse.jetty:jetty-server:9.4.6.v20170531'
+	compile 'redis.clients:jedis:2.9.0'
 }
 
-// Read source files using UTF-8
 tasks.withType(JavaCompile) {
 	options.encoding = 'UTF-8'
 	options.deprecation = true
 }
 
-natives {
-	jars = configurations.compile.collectMany {
-		it.name.contains('natives') ? [it.name] : []
-	}
-}
-
-run {
-	systemProperty 'java.library.path', file('build/natives/' + com.stehno.gradle.natives.Platform.current().os)
-}
-
-startScripts {
-	defaultJvmOpts = [ '-Djava.library.path=./lib/natives/' ]
-	classpath = classpath.filter {
-		!it.name.contains('natives')
-	}
-}
-applicationDistribution.from("conf") {
-	into "conf"
-}
-applicationDistribution.from("www") {
-	into "www"
-}
-applicationDistribution.from(unpackNatives) {
-	from fileTree('build/natives').files
-	into 'lib/natives'
-}
-applicationDistribution.exclude {
-	it.name.contains('natives') && it.name.endsWith('.jar')
-}
-
-// License header formatting
-license {
-	exclude 'src/main/java/org/spacehq/mc/auth/SessionService.java'
-	sourceSets = project.sourceSets
-	ignoreFailures false
-	strictCheck true
-	mapping {
-		java = 'SLASHSTAR_STYLE'
-	}
+task capsule(type: MavenCapsule) {
+	applicationClass 'com.surgeplay.visage.Visage'
 }

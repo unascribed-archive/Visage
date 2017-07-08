@@ -21,12 +21,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.surgeplay.visage.util;
+package com.surgeplay.visage.distributor;
 
-import java.util.UUID;
-
-public class UUIDs {
-	public static boolean isAlex(UUID uuid) {
-		return (uuid.hashCode() & 1) == 1;
-	}
+public class RenderResponse {
+	public String renderer;
+	public byte[] png;
 }

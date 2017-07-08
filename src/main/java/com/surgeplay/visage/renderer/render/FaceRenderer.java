@@ -21,12 +21,41 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.surgeplay.visage.util;
+package com.surgeplay.visage.renderer.render;
 
-import java.util.UUID;
+import com.surgeplay.visage.renderer.RenderContext;
+import com.surgeplay.visage.renderer.render.primitive.Plane;
+import com.surgeplay.visage.renderer.render.primitive.Stage;
 
-public class UUIDs {
-	public static boolean isAlex(UUID uuid) {
-		return (uuid.hashCode() & 1) == 1;
+public class FaceRenderer extends Renderer {
+
+	public FaceRenderer(RenderContext owner) {
+		super(owner);
 	}
+
+	@Override
+	protected void initPrimitives() {
+		Stage stage = new Stage();
+		stage.y = 0;
+		stage.z = -2.5f;
+		stage.rotZ = 0;
+		stage.rotY = 0;
+		stage.rotX = -90;
+		stage.lit = false;
+		addPrimitive(stage);
+		
+		Plane head = new Plane();
+		head.y = 0;
+		head.z = 0;
+		head.texture = TextureType.HEAD_FRONT;
+		head.alphaMode = AlphaMode.NONE;
+		stage.members.add(head);
+		Plane helm = new Plane();
+		helm.scaleX = helm.scaleY = helm.scaleZ = 1.05f;
+		helm.z = -0.0001f;
+		helm.texture = TextureType.HEAD2_FRONT;
+		helm.alphaMode = AlphaMode.MASK;
+		stage.members.add(helm);
+	}
+
 }

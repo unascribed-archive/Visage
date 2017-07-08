@@ -1,8 +1,7 @@
 /*
- * Visage
- * Copyright (c) 2015-2016, Aesen Vismea <aesen@unascribed.com>
- *
  * The MIT License
+ *
+ * Copyright (c) 2015-2017, William Thompson (unascribed)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
