@@ -9,8 +9,8 @@ uses VBOs to speed up rendering.
 
 Visage is tested on Arch Linux with the Mesa RadeonSI open-source drivers. The
 offical server uses Debian with Mesa RadeonSI. Proprietary drivers are not
-supported, but will probably work. *Windows is completely unsupported. Use it at
-your own peril.**
+supported, but will probably work. **Windows is completely unsupported. Use it
+at your own peril.**
 
 ## For Website Designers
 There is an [official hosted Visage site][1] with full API documentation.
