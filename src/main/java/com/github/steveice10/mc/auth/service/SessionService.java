@@ -1,3 +1,25 @@
+/*
+ * Copyright (C) 2013-2017 Steveice10
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is furnished to do
+ * so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 package com.github.steveice10.mc.auth.service;
 
 import com.github.steveice10.mc.auth.data.GameProfile;
@@ -164,6 +186,7 @@ public class SessionService {
      */
     public GameProfile fillProfileTextures(GameProfile profile, boolean requireSecure) throws PropertyException {
         GameProfile.Property textures = profile.getProperty("textures");
+        GameProfile out = profile;
         if(textures != null) {
             if(!textures.hasSignature()) {
                 throw new ProfileTextureException("Signature is missing from textures payload.");
@@ -180,14 +203,12 @@ public class SessionService {
             } catch(Exception e) {
                 throw new ProfileTextureException("Could not decode texture payload.", e);
             }
-
+            
             if(result.profileId == null || !result.profileId.equals(profile.getId())) {
                 throw new ProfileTextureException("Decrypted textures payload was for another user. (expected id " + profile.getId() + " but was for " + result.profileId + ")");
             }
-
-            if(result.profileName == null || !result.profileName.equals(profile.getName())) {
-                throw new ProfileTextureException("Decrypted textures payload was for another user. (expected name " + profile.getName() + " but was for " + result.profileName + ")");
-            }
+            
+            out = new GameProfile(profile.getId(), result.profileName);
 
             if(requireSecure) {
                 if(result.isPublic) {
@@ -203,11 +224,11 @@ public class SessionService {
             }
 
             if(result.textures != null) {
-                profile.getTextures().putAll(result.textures);
+                out.getTextures().putAll(result.textures);
             }
         }
 
-        return profile;
+        return out;
     }
 
     @Override

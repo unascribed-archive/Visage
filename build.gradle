@@ -34,10 +34,6 @@ switch ( OperatingSystem.current() ) {
 repositories {
 	mavenCentral()
 	mavenLocal()
-	maven {
-		name 'spacehq'
-		url 'http://repo.spacehq.org/content/repositories/snapshots/'
-	}
 }
 
 project.ext.lwjglVersion = "3.1.2"
@@ -49,7 +45,6 @@ dependencies {
 	compile 'com.rabbitmq:amqp-client:4.1.1'
 	compile 'com.google.code.gson:gson:2.8.1'
 	compile 'org.fusesource.jansi:jansi:1.16'
-	compile 'org.spacehq:mcauthlib:1.0-SNAPSHOT'
 	compile 'com.github.kerner1000:javapng:2.1.2'
 	compile 'org.slf4j:slf4j-jdk14:1.7.25'
 	
@@ -76,4 +71,12 @@ tasks.withType(JavaCompile) {
 
 task capsule(type: MavenCapsule) {
 	applicationClass 'com.surgeplay.visage.Visage'
+}
+
+license {
+	header = project.file('LICENSE')
+	
+	matching('**/com/github/steveice10/mc/auth/**') {
+		header = project.file('mcauthlib-LICENSE')
+	}
 }

@@ -21,12 +21,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+
 package com.surgeplay.visage.distributor;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -46,21 +50,17 @@ import joptsimple.internal.Strings;
 
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
-import org.spacehq.mc.auth.GameProfile;
-import org.spacehq.mc.auth.GameProfileRepository;
-import org.spacehq.mc.auth.ProfileLookupCallback;
-import org.spacehq.mc.auth.ProfileTexture;
-import org.spacehq.mc.auth.ProfileTextureType;
-import org.spacehq.mc.auth.SessionService;
-import org.spacehq.mc.auth.exception.ProfileNotFoundException;
-import org.spacehq.mc.auth.properties.PropertyMap;
-import org.spacehq.mc.auth.serialize.GameProfileSerializer;
-import org.spacehq.mc.auth.serialize.PropertyMapSerializer;
-import org.spacehq.mc.auth.serialize.UUIDSerializer;
-import org.spacehq.mc.auth.util.URLUtils;
 
 import redis.clients.jedis.Jedis;
 
+import com.github.steveice10.mc.auth.data.GameProfile;
+import com.github.steveice10.mc.auth.data.GameProfile.Texture;
+import com.github.steveice10.mc.auth.data.GameProfile.TextureType;
+import com.github.steveice10.mc.auth.exception.profile.ProfileNotFoundException;
+import com.github.steveice10.mc.auth.service.ProfileService;
+import com.github.steveice10.mc.auth.service.ProfileService.ProfileLookupCallback;
+import com.github.steveice10.mc.auth.service.SessionService;
+import com.github.steveice10.mc.auth.util.UUIDSerializer;
 import com.google.common.base.Charsets;
 import com.google.common.io.ByteStreams;
 import com.google.gson.Gson;
@@ -78,10 +78,8 @@ public class VisageHandler extends AbstractHandler {
 	
 	private final VisageDistributor distributor;
 	private final SessionService ss = new SessionService();
-	private final GameProfileRepository gpr = new GameProfileRepository();
+	private final ProfileService gpr = new ProfileService();
 	private final Gson gson = new GsonBuilder()
-								.registerTypeAdapter(GameProfile.class, new GameProfileSerializer())
-								.registerTypeAdapter(PropertyMap.class, new PropertyMapSerializer())
 								.registerTypeAdapter(UUID.class, new UUIDSerializer())
 								.create();
 	
@@ -231,7 +229,7 @@ public class VisageHandler extends AbstractHandler {
 							} else {
 								if (cacheHeader) missed.add("username");
 								final Object[] result = new Object[1];
-								gpr.findProfilesByNames(new String[] {subject}, new ProfileLookupCallback() {
+								gpr.findProfilesByName(new String[] {subject}, new ProfileLookupCallback() {
 									
 									@Override
 									public void onProfileLookupSucceeded(GameProfile profile) {
@@ -288,28 +286,34 @@ public class VisageHandler extends AbstractHandler {
 		GameProfile profile = new GameProfile(uuid, "<unknown>");
 		byte[] skin;
 		try (Jedis sj = distributor.getSkinJedis()) {
-			String resp = sj.get(uuid.toString()+":profile");
+			byte[] resp = sj.get((uuid.toString()+":profile").getBytes(Charsets.UTF_8));
 			byte[] skinResp = sj.get((uuid.toString()+":skin").getBytes(Charsets.UTF_8));
 			if (resp != null) {
-				profile = gson.fromJson(resp, GameProfile.class);
+				profile = ss.fillProfileTextures(Profiles.readGameProfile(new DataInputStream(new ByteArrayInputStream(resp))), false);
 			} else {
 				if (uuid.version() == 8) {
 					profile = new GameProfile(uuid, subject.substring(2));
 				} else {
 					if (cacheHeader) missed.add("profile");
 					profile = ss.fillProfileProperties(profile);
-					sj.set(uuid.toString()+":profile", gson.toJson(profile));
+					profile = ss.fillProfileTextures(profile, false);
+					ByteArrayOutputStream baos = new ByteArrayOutputStream();
+					DataOutputStream dos = new DataOutputStream(baos);
+					Profiles.writeGameProfile(dos, profile);
+					dos.close();
+					sj.set((uuid.toString()+":profile").getBytes(Charsets.UTF_8), baos.toByteArray());
 					sj.pexpire(uuid.toString()+":profile", skinTtlMillis);
 				}
 			}
+			System.out.println(profile);
 			if (skinResp != null && skinResp.length > 3) {
 				skin = skinResp;
 			} else {
 				if (cacheHeader) missed.add("skin");
-				Map<ProfileTextureType, ProfileTexture> tex = ss.getTextures(profile, false);
-				if (tex.containsKey(ProfileTextureType.SKIN)) {
-					ProfileTexture skinTex = tex.get(ProfileTextureType.SKIN);
-					try (InputStream in = URLUtils.constantURL(skinTex.getUrl()).openStream()) {
+				Map<TextureType, Texture> tex = profile.getTextures();
+				if (tex.containsKey(TextureType.SKIN)) {
+					Texture skinTex = tex.get(TextureType.SKIN);
+					try (InputStream in = URI.create(skinTex.getURL()).toURL().openStream()) {
 						skin = ByteStreams.toByteArray(in);
 					}
 				} else {
@@ -347,6 +351,8 @@ public class VisageHandler extends AbstractHandler {
 				}
 			}
 		}
+		
+		System.out.println(profile);
 		
 		if (mode == RenderMode.SKIN) {
 			write(response, missed, skin, "none");

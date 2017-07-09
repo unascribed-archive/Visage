@@ -21,40 +21,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+
 package com.surgeplay.visage.util;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Map.Entry;
+import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
-import org.spacehq.mc.auth.GameProfile;
-import org.spacehq.mc.auth.properties.Property;
-import org.spacehq.mc.auth.serialize.UUIDSerializer;
-import org.spacehq.mc.auth.util.Base64;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
+import com.github.steveice10.mc.auth.data.GameProfile;
+import com.github.steveice10.mc.auth.data.GameProfile.Texture;
+import com.github.steveice10.mc.auth.data.GameProfile.TextureModel;
+import com.github.steveice10.mc.auth.data.GameProfile.TextureType;
+import com.google.common.collect.Maps;
 
 public class Profiles {
-	private static Gson gson = new GsonBuilder().registerTypeAdapter(UUID.class, new UUIDSerializer()).create();
-
 	public static boolean isSlim(GameProfile profile) throws IOException {
-		if (profile.getProperties().containsKey("textures")) {
-			String texJson = new String(Base64.decode(profile.getProperties().get("textures").getValue().getBytes(StandardCharsets.UTF_8)));
-			JsonObject obj = gson.fromJson(texJson, JsonObject.class);
-			JsonObject tex = obj.getAsJsonObject("textures");
-			if (tex.has("SKIN")) {
-				JsonObject skin = tex.getAsJsonObject("SKIN");
-				if (skin.has("metadata")) {
-					if ("slim".equals(skin.getAsJsonObject("metadata").get("model").getAsString()))
-						return true;
-				}
-				return false;
-			}
+		System.out.println(profile);
+		if (profile.getTextures().containsKey(TextureType.SKIN)) {
+			Texture t = profile.getTexture(TextureType.SKIN);
+			return t.getModel() == TextureModel.SLIM;
 		}
 		return UUIDs.isAlex(profile.getId());
 	}
@@ -68,14 +56,12 @@ public class Profiles {
 		GameProfile profile = new GameProfile(uuid, name);
 		int len = data.readUnsignedShort();
 		for (int i = 0; i < len; i++) {
-			boolean signed = data.readBoolean();
-			Property prop;
-			if (signed) {
-				prop = new Property(data.readUTF(), data.readUTF(), data.readUTF());
-			} else {
-				prop = new Property(data.readUTF(), data.readUTF());
-			}
-			profile.getProperties().put(data.readUTF(), prop);
+			TextureType type = TextureType.values()[data.readUnsignedByte()];
+			TextureModel model = TextureModel.values()[data.readUnsignedByte()];
+			String url = data.readUTF();
+			Map<String, String> m = Maps.newHashMap();
+			m.put("model", model.name().toLowerCase(Locale.ROOT));
+			profile.getTextures().put(type, new Texture(url, m));
 		}
 		return profile;
 	}
@@ -89,18 +75,11 @@ public class Profiles {
 		data.writeLong(profile.getId().getMostSignificantBits());
 		data.writeLong(profile.getId().getLeastSignificantBits());
 		data.writeUTF(profile.getName());
-		data.writeShort(profile.getProperties().size());
-		for (Entry<String, Property> en : profile.getProperties().entrySet()) {
-			data.writeBoolean(en.getValue().hasSignature());
-			if (en.getValue().hasSignature()) {
-				data.writeUTF(en.getValue().getName());
-				data.writeUTF(en.getValue().getValue());
-				data.writeUTF(en.getValue().getSignature());
-			} else {
-				data.writeUTF(en.getValue().getName());
-				data.writeUTF(en.getValue().getValue());
-			}
-			data.writeUTF(en.getKey());
+		data.writeShort(profile.getTextures().size());
+		for (Map.Entry<TextureType, Texture> en : profile.getTextures().entrySet()) {
+			data.writeByte(en.getKey().ordinal());
+			data.writeByte(en.getValue().getModel().ordinal());
+			data.writeUTF(en.getValue().getURL());
 		}
 	}
 }

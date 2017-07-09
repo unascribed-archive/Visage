@@ -21,6 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+
 package com.surgeplay.visage.renderer;
 
 import java.awt.Graphics2D;
@@ -48,7 +49,7 @@ import org.lwjgl.glfw.GLFWKeyCallback;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GLUtil;
 import org.lwjgl.stb.STBEasyFont;
-import org.spacehq.mc.auth.GameProfile;
+import com.github.steveice10.mc.auth.data.GameProfile;
 
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Maps;

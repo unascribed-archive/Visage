@@ -21,6 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+
 package com.surgeplay.visage.renderer;
 
 import java.io.IOException;
@@ -30,7 +31,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 
 import org.lwjgl.opengl.GL;
-import org.spacehq.mc.auth.SessionService;
+import com.github.steveice10.mc.auth.service.SessionService;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
