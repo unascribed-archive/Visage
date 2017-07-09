@@ -50,7 +50,9 @@ import org.lwjgl.opengl.GLUtil;
 import org.lwjgl.stb.STBEasyFont;
 import org.spacehq.mc.auth.GameProfile;
 
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.Maps;
+import com.google.common.io.ByteStreams;
 import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.QueueingConsumer.Delivery;
 import com.sixlegs.png.PngImage;
@@ -651,7 +653,26 @@ public class RenderContext extends Thread {
 		ByteArrayOutputStream png = new ByteArrayOutputStream();
 		ImageIO.write(out, "PNG", png);
 		if (Visage.trace) Visage.log.finest("Wrote png");
-		return png.toByteArray();
+		if (parent.config.getBoolean("pngquant")) {
+			Stopwatch sw = null;
+			if (Visage.debug) {
+				sw = Stopwatch.createStarted();
+			}
+			Process proc = Runtime.getRuntime().exec(new String[]{"pngquant", "--strip", "--speed", "2", "-"});
+			png.writeTo(proc.getOutputStream());
+			ByteStreams.copy(proc.getErrorStream(), System.err);
+			byte[] quant = ByteStreams.toByteArray(proc.getInputStream());
+			if (Visage.debug) {
+				sw.stop();
+				int savings = png.size() - quant.length;
+				int pct = (int)((((float)savings)/png.size())*100);
+				Visage.log.finer("Original: "+png.size()+" / pngquant'd: "+quant.length);
+				Visage.log.finer("Saved "+savings+" bytes ("+pct+"%) using pngquant in "+sw); 
+			}
+			return quant;
+		} else {
+			return png.toByteArray();
+		}
 	}
 
 	private void drawQuad(int width, int height) {
