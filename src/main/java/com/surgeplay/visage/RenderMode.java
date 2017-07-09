@@ -73,6 +73,17 @@ public enum RenderMode {
 		}
 	}
 	
+	public boolean is3D() {
+		switch (this) {
+			case HEAD: return true;
+			case BUST: return true;
+			case BUST_SLIM: return true;
+			case FULL: return true;
+			case FULL_SLIM: return true;
+			default: return false;
+		}
+	}
+	
 	public RenderMode slim() {
 		switch (this) {
 			case BUST: return BUST_SLIM;

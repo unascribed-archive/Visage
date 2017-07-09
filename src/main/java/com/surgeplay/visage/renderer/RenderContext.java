@@ -51,7 +51,6 @@ import org.lwjgl.stb.STBEasyFont;
 import org.spacehq.mc.auth.GameProfile;
 
 import com.google.common.collect.Maps;
-import com.google.common.io.Resources;
 import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.QueueingConsumer.Delivery;
 import com.sixlegs.png.PngImage;
@@ -66,7 +65,6 @@ import static com.surgeplay.visage.renderer.util.Errors.*;
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL12.*;
-import static org.lwjgl.opengl.GL13.*;
 import static org.lwjgl.opengl.GL14.*;
 import static org.lwjgl.opengl.GL15.*;
 import static org.lwjgl.opengl.GL20.*;
@@ -141,29 +139,26 @@ public class RenderContext extends Thread {
 		 0, 1, 0,
 	};
 	
+	private static final int CANVAS_WIDTH = 512;
+	private static final float CANVAS_WIDTHf = CANVAS_WIDTH;
+	private static final int CANVAS_HEIGHT = 832;
+	private static final float CANVAS_HEIGHTf = CANVAS_HEIGHT;
+	
+	private static final int SUPERSAMPLING = 4;
+	
 	private static final BufferedImage shadow;
-	private static final ByteBuffer areatex;
-	private static final ByteBuffer searchtex;
 	static {
 		try {
 			shadow = ImageIO.read(ClassLoader.getSystemResource("shadow.png"));
-			byte[] areatexHeap = Resources.toByteArray(ClassLoader.getSystemResource("smaa_area.raw"));
-			byte[] searchtexHeap = Resources.toByteArray(ClassLoader.getSystemResource("smaa_search.raw"));
-			areatex = BufferUtils.createByteBuffer(areatexHeap.length);
-			searchtex = BufferUtils.createByteBuffer(searchtexHeap.length);
-			areatex.put(areatexHeap);
-			searchtex.put(searchtexHeap);
 		} catch (IOException e) {
 			throw new InternalError(e);
 		}
 	}
 	
 	public int cubeVbo, planeVbo, texture, shadowTexture;
-	public int albedoTex, edgeTex, blendTex;
-	public int areaTex, searchTex;
 	
-	public int albedoFbo, edgeFbo, blendFbo;
-	public int edgeProgram, blendProgram, neighborhoodProgram;
+	public int fbo, fboTex;
+	public int fxaaProgram;
 	
 	private static int nextId = 1;
 	public VisageRenderer parent;
@@ -204,7 +199,7 @@ public class RenderContext extends Thread {
 				glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 			}
 			
-			long window = glfwCreateWindow(512, 832, "Visage ["+getName()+"]", NULL, NULL);
+			long window = glfwCreateWindow(CANVAS_WIDTH, CANVAS_HEIGHT, "Visage ["+getName()+"]", NULL, NULL);
 			if (window == NULL) {
 				checkGLFWError();
 				throw new RuntimeException("Failed to create window");
@@ -230,15 +225,11 @@ public class RenderContext extends Thread {
 			planeVbo = ids.get();
 			checkGLError();
 			
-			IntBuffer textures = BufferUtils.createIntBuffer(7);
+			IntBuffer textures = BufferUtils.createIntBuffer(3);
 			glGenTextures(textures);
 			texture = textures.get();
 			shadowTexture = textures.get();
-			albedoTex = textures.get();
-			edgeTex = textures.get();
-			blendTex = textures.get();
-			areaTex = textures.get();
-			searchTex = textures.get();
+			fboTex = textures.get();
 			checkGLError();
 			
 			Textures.upload(shadow, GL_RGBA8, shadowTexture);
@@ -246,84 +237,26 @@ public class RenderContext extends Thread {
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 			checkGLError();
 			
-			glBindTexture(GL_TEXTURE_2D, areaTex);
+			glBindTexture(GL_TEXTURE_2D, fboTex);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RG8, 160, 560, 0, GL_RG, GL_UNSIGNED_BYTE, areatex);
-			checkGLError();
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, CANVAS_WIDTH*SUPERSAMPLING, CANVAS_HEIGHT*SUPERSAMPLING, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 			
-			glBindTexture(GL_TEXTURE_2D, searchTex);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, 66, 33, 0, GL_RED, GL_UNSIGNED_BYTE, searchtex);
-			checkGLError();
+			fbo = glGenFramebuffers();
 			
-			setupFboTex(albedoTex);
-			setupFboTex(edgeTex);
-			setupFboTex(blendTex);
+			int depth = glGenRenderbuffers();
 			
-			IntBuffer fbos = BufferUtils.createIntBuffer(3);
-			glGenFramebuffers(fbos);
-			albedoFbo = fbos.get();
-			edgeFbo = fbos.get();
-			blendFbo = fbos.get();
-			
-			int albedoDepth = glGenRenderbuffers();
-			
-			
-			glBindFramebuffer(GL_FRAMEBUFFER, albedoFbo);
-			glDrawBuffers(GL_COLOR_ATTACHMENT0);
-			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, albedoTex, 0);
-			glBindRenderbuffer(GL_RENDERBUFFER, albedoDepth);
-			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, 512, 832);
-			glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, albedoDepth);
+			glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+			glDrawBuffer(GL_COLOR_ATTACHMENT0);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTex, 0);
+			glBindRenderbuffer(GL_RENDERBUFFER, depth);
+			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, CANVAS_WIDTH*SUPERSAMPLING, CANVAS_HEIGHT*SUPERSAMPLING);
+			glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
 			checkFramebufferStatus();
 			
-			glBindFramebuffer(GL_FRAMEBUFFER, edgeFbo);
-			glDrawBuffers(GL_COLOR_ATTACHMENT0);
-			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, edgeTex, 0);
-			checkFramebufferStatus();
-			
-			glBindFramebuffer(GL_FRAMEBUFFER, blendFbo);
-			glDrawBuffers(GL_COLOR_ATTACHMENT0);
-			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, blendTex, 0);
-			checkFramebufferStatus();
-			
-			
-			edgeProgram = glCreateProgram();
-			
-			createShader(SMAA.edgeVs, SMAA.edgeFs, edgeProgram);
-			glUseProgram(edgeProgram);
-			glUniform1i(glGetUniformLocation(edgeProgram, "albedo_tex"), 0);
-			glUseProgram(0);
-			validateShader(edgeProgram);
-			checkGLError();
-			
-			
-			blendProgram = glCreateProgram();
-			
-			createShader(SMAA.blendVs, SMAA.blendFs, blendProgram);
-			glUseProgram(blendProgram);
-			glUniform1i(glGetUniformLocation(blendProgram, "edge_tex"), 0);
-			glUniform1i(glGetUniformLocation(blendProgram, "area_tex"), 1);
-			glUniform1i(glGetUniformLocation(blendProgram, "search_tex"), 2);
-			glUseProgram(0);
-			validateShader(blendProgram);
-			checkGLError();
-			
-			neighborhoodProgram = glCreateProgram();
-			
-			createShader(SMAA.neighborhoodVs, SMAA.neighborhoodFs, neighborhoodProgram);
-			glUseProgram(neighborhoodProgram);
-			glUniform1i(glGetUniformLocation(neighborhoodProgram, "albedo_tex"), 0);
-			glUniform1i(glGetUniformLocation(neighborhoodProgram, "blend_tex"), 1);
-			glUseProgram(0);
-			validateShader(neighborhoodProgram);
-			checkGLError();
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			
 			
 			FloatBuffer vertexBuffer = BufferUtils.createFloatBuffer(vertices.length);
@@ -382,20 +315,19 @@ public class RenderContext extends Thread {
 			Visage.log.info("Waiting for jobs");
 			try {
 				if (parent.config.getBoolean("continuous")) {
-					glClearColor(0.4f, 0.4f, 0.4f, 1);
-					
 					BufferedImage alex = ImageIO.read(ClassLoader.getSystemResource("alex.png"));
 					BufferedImage steve = ImageIO.read(ClassLoader.getSystemResource("steve.png"));
 					BufferedImage test = ImageIO.read(ClassLoader.getSystemResource("test_skin.png"));
 					
 					ByteBuffer fontBuffer = BufferUtils.createByteBuffer(276480);
 					
-					RenderMode[] modes = {RenderMode.FACE, RenderMode.FRONT, RenderMode.FRONTFULL, RenderMode.BUST, RenderMode.FULL};
+					RenderMode[] modes = {RenderMode.FACE, RenderMode.FRONT, RenderMode.FRONTFULL, RenderMode.HEAD, RenderMode.BUST, RenderMode.FULL};
 					BufferedImage[] skins = {alex, steve, test, test};
 					String[] names = {"alex", "steve", "test (slim)", "test"};
 					
 					int[] skin = {0};
-					int[] mode = {4};
+					int[] mode = {5};
+					boolean[] showText = {true};
 					
 					glfwSetKeyCallback(window, new GLFWKeyCallback() {
 						@Override
@@ -415,6 +347,8 @@ public class RenderContext extends Thread {
 									if (skin[0] < 0) {
 										skin[0] = skins.length+skin[0];
 									}
+								} else if (key == GLFW_KEY_SPACE) {
+									showText[0] = !showText[0];
 								}
 							}
 						}
@@ -434,7 +368,13 @@ public class RenderContext extends Thread {
 					while (!glfwWindowShouldClose(window)) {
 						glfwPollEvents();
 						
-						drawContinuous(skins[skin[0]], pattern, fontBuffer, (skin[0] % 2 == 0) ? modes[mode[0]].slim() : modes[mode[0]], modes[mode[0]].name().toLowerCase()+" - "+names[skin[0]]);
+						String modeText;
+						if (showText[0]) {
+							modeText = modes[mode[0]].name().toLowerCase()+" - "+names[skin[0]];
+						} else {
+							modeText = null;
+						}
+						drawContinuous(skins[skin[0]], pattern, fontBuffer, (skin[0] % 2 == 0) ? modes[mode[0]].slim() : modes[mode[0]], modeText);
 						
 						glfwSwapBuffers(window);
 					}
@@ -475,48 +415,12 @@ public class RenderContext extends Thread {
 			Visage.log.log(Level.SEVERE, "A fatal error has occurred while setting up a render thread.", e);
 		}
 	}
-	
-	private void setupFboTex(int tex) {
-		glBindTexture(GL_TEXTURE_2D, tex);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 512, 832, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-	}
-
-	private void createShader(String vertexText, String fragText, int program) {
-		int vs = glCreateShader(GL_VERTEX_SHADER);
-		glShaderSource(vs, vertexText);
-		glCompileShader(vs);
-		
-		System.out.println(glGetShaderInfoLog(vs));
-		
-		glAttachShader(program, vs);
-		glDeleteShader(vs);
-		
-		int fs = glCreateShader(GL_FRAGMENT_SHADER);
-		glShaderSource(fs, fragText);
-		glCompileShader(fs);
-		
-		System.out.println(glGetShaderInfoLog(fs).trim());
-		
-		glAttachShader(program, fs);
-		glDeleteShader(fs);
-		
-		glLinkProgram(program);
-	}
-	
-	private void validateShader(int program) {
-		glValidateProgram(program);
-		System.out.println(glGetProgramInfoLog(program).trim());
-	}
 
 	private void drawContinuous(BufferedImage skin, ByteBuffer pattern, ByteBuffer fontBuf, RenderMode mode, String modeName) throws Exception {
 		glColor3f(1, 1, 1);
-		int h = 512;
+		int h = CANVAS_WIDTH;
 		if (mode .isTall()) {
-			h = 832;
+			h = CANVAS_HEIGHT;
 		}
 		
 		glFrontFace(GL_CCW);
@@ -526,10 +430,10 @@ public class RenderContext extends Thread {
 		glEnable(GL_POLYGON_STIPPLE);
 		glColor3f(0.6f, 0.6f, 0.6f);
 		glBegin(GL_QUADS); {
-			glVertex2f(0, mode.isTall() ? 0 : 320);
-			glVertex2f(512, mode.isTall() ? 0 : 320);
-			glVertex2f(512, 832);
-			glVertex2f(0, 832);
+			glVertex2f(0, mode.isTall() ? 0 : CANVAS_HEIGHT-CANVAS_WIDTH);
+			glVertex2f(CANVAS_WIDTH, mode.isTall() ? 0 : CANVAS_HEIGHT-CANVAS_WIDTH);
+			glVertex2f(CANVAS_WIDTH, CANVAS_HEIGHT);
+			glVertex2f(0, CANVAS_HEIGHT);
 		} glEnd();
 		glDisable(GL_POLYGON_STIPPLE);
 		
@@ -538,11 +442,11 @@ public class RenderContext extends Thread {
 		glColor3f(1, 1, 1);
 		
 		glPushMatrix();
-			draw(mode, 512, h, new GameProfile(new UUID(0L, 0L), "continuous_test"), skin, Collections.emptyMap());
+			draw(mode, CANVAS_WIDTH, h, new GameProfile(new UUID(0L, 0L), "continuous_test"), skin, Collections.emptyMap());
 		glPopMatrix();
 		
 		glPushMatrix();
-			setup2D(512, 832);
+			setup2D(CANVAS_WIDTH, CANVAS_HEIGHT);
 			
 			glDisable(GL_LIGHTING);
 			glDisable(GL_DEPTH_TEST);
@@ -551,36 +455,36 @@ public class RenderContext extends Thread {
 			
 			glScalef(2, 2, 1);
 			
-			fontBuf.rewind();
-			int amt = STBEasyFont.stb_easy_font_print(5, 5, "visage v"+Visage.VERSION+" - "+modeName+"\n< - prev mode | > - next mode\n^ - prev skin | v - next skin", null, fontBuf);
-			
-			glColor3f(1, 1, 1);
-			glBegin(GL_QUADS);
-			for (int x = -1; x <= 1; x++) {
-				for (int y = -1; y <= 1; y++) {
-					fontBuf.rewind();
-					if (x == 0 && y == 0) {
-						continue;
-					}
-					for (int i = 0; i < amt*4; i++) {
-						glVertex2f(fontBuf.getFloat()+x, fontBuf.getFloat()+y);
-						fontBuf.position(fontBuf.position()+8);
+			if (modeName != null) {
+				fontBuf.rewind();
+				int amt = STBEasyFont.stb_easy_font_print(5, 5, "visage v"+Visage.VERSION+" - "+modeName+"\n< - prev mode | > - next mode\n^ - prev skin | v - next skin\nspace - hide/show text", null, fontBuf);
+				
+				glColor3f(1, 1, 1);
+				glBegin(GL_QUADS);
+				for (int x = -1; x <= 1; x++) {
+					for (int y = -1; y <= 1; y++) {
+						fontBuf.rewind();
+						if (x == 0 && y == 0) {
+							continue;
+						}
+						for (int i = 0; i < amt*4; i++) {
+							glVertex2f(fontBuf.getFloat()+x, fontBuf.getFloat()+y);
+							fontBuf.position(fontBuf.position()+8);
+						}
 					}
 				}
+				glEnd();
+				
+				glTranslatef(0, 0, 1);
+				glColor3f(0, 0, 0);
+				fontBuf.rewind();
+				glBegin(GL_QUADS);
+				for (int i = 0; i < amt*4; i++) {
+					glVertex2f(fontBuf.getFloat(), fontBuf.getFloat());
+					fontBuf.position(fontBuf.position()+8);
+				}
+				glEnd();
 			}
-			glEnd();
-			
-			glTranslatef(0, 0, 1);
-			glColor3f(0, 0, 0);
-			fontBuf.rewind();
-			glBegin(GL_QUADS);
-			for (int i = 0; i < amt*4; i++) {
-				glVertex2f(fontBuf.getFloat(), fontBuf.getFloat());
-				fontBuf.position(fontBuf.position()+8);
-			}
-			glEnd();
-			
-			
 			
 		glPopMatrix();
 	}
@@ -690,89 +594,45 @@ public class RenderContext extends Thread {
 					renderer.setSkin(skin);
 					if (Visage.trace) Visage.log.finest("Rendering");
 					
-					// albedo
 					glUseProgram(0);
-					glBindFramebuffer(GL_FRAMEBUFFER, albedoFbo);
+					glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 					glClearColor(0, 0, 0, 0);
 					glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+					renderer.render(width*SUPERSAMPLING, height*SUPERSAMPLING);
 					
-					glEnable(GL_CULL_FACE);
-					glActiveTexture(GL_TEXTURE0);
-					renderer.render(width, height);
-					glDisable(GL_CULL_FACE);
+					glBindFramebuffer(GL_FRAMEBUFFER, 0);
+					
 					glDisable(GL_LIGHTING);
-					glDisable(GL_DEPTH_TEST);
+					glColor3f(1, 1, 1);
 					glDisable(GL_ALPHA_TEST);
+					glDisable(GL_CULL_FACE);
 					glEnable(GL_BLEND);
 					glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+					glBindTexture(GL_TEXTURE_2D, fboTex);
 					
+					glMatrixMode(GL_PROJECTION);
+					glLoadIdentity();
+					glOrtho(-1, 1, -1, 1, -10, 10);
+					glViewport(0, 0, width, height);
+					
+					glMatrixMode(GL_MODELVIEW);
+					glLoadIdentity();
+					
+					glViewport(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+					
+					float s = 1f;
+					
+					glBegin(GL_QUADS); {
+						glTexCoord2f(0, 0);
+						glVertex2f(-s, -s);
+						glTexCoord2f(1, 0);
+						glVertex2f(s, -s);
+						glTexCoord2f(1, 1);
+						glVertex2f(s, s);
+						glTexCoord2f(0, 1);
+						glVertex2f(-s, s);
+					} glEnd();
 					glUseProgram(0);
-					glBindFramebuffer(GL_FRAMEBUFFER, 0);
-					
-					
-					// edge
-					glBindFramebuffer(GL_FRAMEBUFFER, edgeFbo);
-					glClearColor(0, 0, 0, 0);
-					glClear(GL_COLOR_BUFFER_BIT);
-					
-					glUseProgram(edgeProgram);
-					
-					glActiveTexture(GL_TEXTURE0);
-					glBindTexture(GL_TEXTURE_2D, albedoTex);
-					
-					setup2D(width, height);
-					drawQuad(width, height);
-					
-					glUseProgram(0);
-					System.out.print(glGetProgramInfoLog(edgeProgram).trim());
-					glBindFramebuffer(GL_FRAMEBUFFER, 0);
-					
-					
-					// blend
-					glBindFramebuffer(GL_FRAMEBUFFER, blendFbo);
-					glClearColor(0, 0, 0, 0);
-					glClear(GL_COLOR_BUFFER_BIT);
-					
-					glUseProgram(blendProgram);
-					
-					glActiveTexture(GL_TEXTURE0);
-					glBindTexture(GL_TEXTURE_2D, edgeTex);
-					
-					glActiveTexture(GL_TEXTURE1);
-					glBindTexture(GL_TEXTURE_2D, areaTex);
-					
-					glActiveTexture(GL_TEXTURE2);
-					glBindTexture(GL_TEXTURE_2D, searchTex);
-					
-					setup2D(width, height);
-					drawQuad(width, height);
-					
-					glUseProgram(0);
-					System.out.print(glGetProgramInfoLog(blendProgram).trim());
-					glBindFramebuffer(GL_FRAMEBUFFER, 0);
-					
-					
-					// neighborhood
-					glUseProgram(neighborhoodProgram);
-					
-					glClearColor(0, 0, 0, 0);
-					glClear(GL_COLOR_BUFFER_BIT);
-					glDisable(GL_DEPTH_TEST);
-					
-					glActiveTexture(GL_TEXTURE0);
-					glBindTexture(GL_TEXTURE_2D, albedoTex);
-					
-					glActiveTexture(GL_TEXTURE1);
-					glBindTexture(GL_TEXTURE_2D, blendTex);
-					
-					setup2D(width, height);
-					drawQuad(width, height);
-					
-					glUseProgram(0);
-					System.out.print(glGetProgramInfoLog(neighborhoodProgram).trim());
-					glActiveTexture(GL_TEXTURE0);
-					
-					
 					
 					if (!parent.config.getBoolean("continuous")) {
 						if (Visage.trace) Visage.log.finest("Rendered - reading pixels");
@@ -796,11 +656,11 @@ public class RenderContext extends Thread {
 
 	private void drawQuad(int width, int height) {
 		glBegin(GL_QUADS); {
-			glTexCoord2f(0, height/832f);
+			glTexCoord2f(0, height/CANVAS_HEIGHTf);
 			glVertex2f(0, 0);
-			glTexCoord2f(width/512f, height/832f);
+			glTexCoord2f(width/CANVAS_WIDTHf, height/CANVAS_HEIGHTf);
 			glVertex2f(width, 0);
-			glTexCoord2f(width/512f, 0);
+			glTexCoord2f(width/CANVAS_WIDTHf, 0);
 			glVertex2f(width, height);
 			glTexCoord2f(0, 0);
 			glVertex2f(0, height);
