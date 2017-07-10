@@ -691,7 +691,7 @@ public class RenderContext extends Thread {
 			if (Visage.debug) {
 				sw = Stopwatch.createStarted();
 			}
-			Process proc = Runtime.getRuntime().exec(new String[]{"pngquant", "--strip", "--speed", "2", "-"});
+			Process proc = Runtime.getRuntime().exec(new String[]{"pngquant", "--speed", "2", "-"});
 			png.writeTo(proc.getOutputStream());
 			ByteStreams.copy(proc.getErrorStream(), System.err);
 			byte[] quant = ByteStreams.toByteArray(proc.getInputStream());
