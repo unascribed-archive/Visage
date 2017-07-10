@@ -37,7 +37,8 @@ headers. You should open the file and tweak the parameters to your particular
 use-case.
 
 You can download a ready-to-run Visage distribution at [the GitHub releases page][2].
-Extract it wherever, `cd` to the directory, and run `./bin/Visage --distributor`.
+Extract it wherever, `cd` to the directory, and run
+`java -jar Visage-<VERSION>-capsule.jar --distributor`.
 **Windows is unsupported. Use it at your own peril.**
 
 Renderers just need to be pointed at your RabbitMQ server, which brings us to...
@@ -48,7 +49,7 @@ editing the `conf/renderer.conf` file to point to the RabbitMQ server the
 sysadmin gives you.
 
 You can download a ready-to-run Visage distribution at [the GitHub releases page][2].
-Extract it wherever, `cd` to the directory, and run `./bin/Visage`.
+Extract it wherever, `cd` to the directory, and run `java -jar Visage-<VERSION>-capsule.jar`.
 Renderer mode is the default. **Windows is unsupported. Use it at your own
 peril.**
 

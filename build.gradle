@@ -14,6 +14,11 @@ def dirty = !'git diff-index HEAD'.execute().in.text.trim().isEmpty();
 version = '2.0.'+commits+(dirty ? '-dirty' : '');
 archivesBaseName = 'Visage'
 
+def commitHash = 'git rev-parse HEAD'.execute().in.text.trim();
+if (commitHash.length() != 40) {
+	commitHash = 'master';
+}
+
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
@@ -71,6 +76,10 @@ tasks.withType(JavaCompile) {
 
 task capsule(type: MavenCapsule) {
 	applicationClass 'com.surgeplay.visage.Visage'
+	capsuleManifest {
+		systemProperties['com.surgeplay.visage.internal.builtFrom'] = commitHash;
+		systemProperties['com.surgeplay.visage.internal.version'] = project.version;
+	}
 }
 
 license {
