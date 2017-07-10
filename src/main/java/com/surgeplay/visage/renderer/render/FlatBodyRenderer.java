@@ -26,7 +26,7 @@ package com.surgeplay.visage.renderer.render;
 
 import com.surgeplay.visage.renderer.RenderContext;
 import com.surgeplay.visage.renderer.render.primitive.Plane;
-import com.surgeplay.visage.renderer.render.primitive.Stage;
+import com.surgeplay.visage.renderer.render.primitive.Group;
 
 public class FlatBodyRenderer extends Renderer {
 
@@ -36,7 +36,7 @@ public class FlatBodyRenderer extends Renderer {
 
 	@Override
 	protected void initPrimitives(boolean slim, boolean full, boolean flip) {
-		Stage stage = new Stage();
+		Group stage = new Group();
 		if (full) {
 			stage.y = flip ? 1.5f : -1.5f;
 			stage.z = -9.75f;
@@ -107,7 +107,8 @@ public class FlatBodyRenderer extends Renderer {
 		helm.scaleX = helm.scaleY = helm.scaleZ = 1.05f;
 		helm.z = -1.5001f;
 		helm.texture = TextureType.HEAD2_FRONT;
-		helm.alphaMode = AlphaMode.MASK;
+		helm.alphaMode = AlphaMode.FULL;
+		helm.depthMask = false;
 		stage.members.add(helm);
 		
 		Plane body2 = new Plane();
@@ -115,7 +116,8 @@ public class FlatBodyRenderer extends Renderer {
 		body2.scaleZ = 1.55f;
 		body2.z = 0.9999f;
 		body2.texture = TextureType.BODY2_FRONT;
-		body2.alphaMode = AlphaMode.MASK;
+		body2.alphaMode = AlphaMode.FULL;
+		body2.depthMask = false;
 		stage.members.add(body2);
 		
 		Plane rarm2 = new Plane();
@@ -124,7 +126,8 @@ public class FlatBodyRenderer extends Renderer {
 		rarm2.z = 0.9999f;
 		rarm2.x = slim ? -1.375f : -1.5f;
 		rarm2.texture = slim ? TextureType.RARM2_SLIM_FRONT : TextureType.RARM2_FRONT;
-		rarm2.alphaMode = AlphaMode.MASK;
+		rarm2.alphaMode = AlphaMode.FULL;
+		rarm2.depthMask = false;
 		stage.members.add(rarm2);
 		
 		Plane larm2 = new Plane();
@@ -133,7 +136,8 @@ public class FlatBodyRenderer extends Renderer {
 		larm2.z = 0.9999f;
 		larm2.x = slim ? 1.375f : 1.5f;
 		larm2.texture = slim ? TextureType.LARM2_SLIM_FRONT : TextureType.LARM2_FRONT;
-		larm2.alphaMode = AlphaMode.MASK;
+		larm2.alphaMode = AlphaMode.FULL;
+		larm2.depthMask = false;
 		stage.members.add(larm2);
 		
 		Plane lleg2 = new Plane();
@@ -142,7 +146,8 @@ public class FlatBodyRenderer extends Renderer {
 		lleg2.scaleZ = 1.55f;
 		lleg2.scaleX = 0.55f;
 		lleg2.texture = TextureType.LLEG2_FRONT;
-		lleg2.alphaMode = AlphaMode.MASK;
+		lleg2.alphaMode = AlphaMode.FULL;
+		lleg2.depthMask = false;
 		stage.members.add(lleg2);
 		
 		Plane rleg2 = new Plane();
@@ -151,7 +156,8 @@ public class FlatBodyRenderer extends Renderer {
 		rleg2.scaleZ = 1.55f;
 		rleg2.scaleX = 0.55f;
 		rleg2.texture = TextureType.RLEG2_FRONT;
-		rleg2.alphaMode = AlphaMode.MASK;
+		rleg2.alphaMode = AlphaMode.FULL;
+		rleg2.depthMask = false;
 		stage.members.add(rleg2);
 	}
 

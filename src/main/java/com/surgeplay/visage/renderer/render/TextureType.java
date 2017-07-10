@@ -207,7 +207,7 @@ public enum TextureType {
 		// Bottom (Gray)
 		40, 48, 4, 4,
 		// Left (Yellow)
-		48, 52, 4, 12,
+		40, 52, 4, 12,
 		// Right (Green)
 		32, 52, 4, 12
 	),
@@ -221,7 +221,7 @@ public enum TextureType {
 		// Bottom (Gray)
 		40, 48, 3, 4,
 		// Left (Yellow)
-		48, 52, 4, 12,
+		40, 52, 4, 12,
 		// Right (Green)
 		32, 52, 4, 12
 	),
@@ -235,7 +235,7 @@ public enum TextureType {
 		// Bottom (Gray)
 		56, 48, 4, 4,
 		// Left (Yellow)
-		64, 52, 4, 12,
+		58, 52, 4, 12,
 		// Right (Green)
 		48, 52, 4, 12
 	),
@@ -249,7 +249,7 @@ public enum TextureType {
 		// Bottom (Gray)
 		56, 48, 3, 4,
 		// Left (Yellow)
-		64, 52, 4, 12,
+		56, 52, 4, 12,
 		// Right (Green)
 		48, 52, 4, 12
 	),
@@ -328,17 +328,17 @@ public enum TextureType {
 			
 			// slightly shrink the box to prevent texture bleeding
 			
-			u[idx  ] = div(tex_w,     x)+0.0001f;
-			v[idx  ] = div(tex_h, edgeY)-0.0001f;
+			u[idx  ] = div(tex_w,     x)+0.001f;
+			v[idx  ] = div(tex_h, edgeY)-0.001f;
 			
-			u[idx+1] = div(tex_w, edgeX)-0.0001f;
-			v[idx+1] = div(tex_h, edgeY)-0.0001f;
+			u[idx+1] = div(tex_w, edgeX)-0.001f;
+			v[idx+1] = div(tex_h, edgeY)-0.001f;
 			
-			u[idx+2] = div(tex_w, edgeX)-0.0001f;
-			v[idx+2] = div(tex_h,     y)+0.0001f;
+			u[idx+2] = div(tex_w, edgeX)-0.001f;
+			v[idx+2] = div(tex_h,     y)+0.001f;
 			
-			u[idx+3] = div(tex_w,     x)+0.0001f;
-			v[idx+3] = div(tex_h,     y)+0.0001f;
+			u[idx+3] = div(tex_w,     x)+0.001f;
+			v[idx+3] = div(tex_h,     y)+0.001f;
 		}
 	}
 

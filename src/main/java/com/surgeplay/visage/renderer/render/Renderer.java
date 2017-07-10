@@ -35,7 +35,6 @@ import com.google.common.collect.Lists;
 import com.surgeplay.visage.Visage;
 import com.surgeplay.visage.renderer.RenderContext;
 import com.surgeplay.visage.renderer.render.primitive.Primitive;
-import com.surgeplay.visage.renderer.util.Textures;
 import static com.surgeplay.visage.renderer.util.Errors.checkGLError;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL12.*;
@@ -54,13 +53,6 @@ public abstract class Renderer {
 	
 	protected void addPrimitive(Primitive prim) {
 		prims.add(prim);
-	}
-	
-	public void setSkin(BufferedImage img) {
-		Textures.upload(img, GL_RGBA8, owner.texture);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		checkGLError();
 	}
 	
 	protected void preRender(int width, int height) {}
@@ -133,6 +125,7 @@ public abstract class Renderer {
 		glReadBuffer(GL_FRONT);
 		ByteBuffer buf = BufferUtils.createByteBuffer(width * height * 4);
 		glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_BYTE, buf);
+		checkGLError();
 		BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
 		int[] pixels = new int[width*height];
 		buf.asIntBuffer().get(pixels);

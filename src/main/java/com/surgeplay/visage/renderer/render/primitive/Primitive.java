@@ -38,6 +38,7 @@ public abstract class Primitive {
 	public float scaleY = 1.0f;
 	public float scaleZ = 1.0f;
 	public float x, y, z, rotX, rotY, rotZ;
+	public float anchorX, anchorY, anchorZ;
 	public boolean lit = true;
 	
 	public boolean textured = true;
@@ -46,17 +47,25 @@ public abstract class Primitive {
 	public AlphaMode alphaMode = AlphaMode.FULL;
 	protected boolean inStage = true;
 	
+	public boolean depthMask = true;
+	
+	public int renderPass = 1;
+	
 	public abstract void render(Renderer renderer);
 	
 	protected void doRender(Renderer renderer, int vbo, int tcbo, float[] vertices) {
+		if (renderer.owner.renderPass != renderPass) return;
 		glPushMatrix();
+			glDepthMask(depthMask);
 			if (Visage.trace) Visage.log.finest("Rendering "+getClass().getSimpleName());
 			if (Visage.trace) Visage.log.finest("Translating to "+x+", "+y+", "+z);
 			glTranslatef(x, y, z);
-			if (Visage.trace) Visage.log.finest("Rotating by "+rotX+"°, "+rotY+"°, "+rotZ+"°");
-			glRotatef(rotX, 1.0f, 0.0f, 0.0f);
-			glRotatef(rotY, 0.0f, 1.0f, 0.0f);
-			glRotatef(rotZ, 0.0f, 0.0f, 1.0f);
+			if (Visage.trace) Visage.log.finest("Rotating by "+rotX+"°, "+rotY+"°, "+rotZ+"°, anchored at "+anchorX+", "+anchorY+", "+anchorZ);
+			glTranslatef(anchorX, anchorY, anchorZ);
+			glRotatef(rotX, 1, 0, 0);
+			glRotatef(rotY, 0, 1, 0);
+			glRotatef(rotZ, 0, 0, 1);
+			glTranslatef(-anchorX, -anchorY, -anchorZ);
 			if (Visage.trace) Visage.log.finest("Scaling by "+scaleX+"x, "+scaleY+"x, "+scaleZ+"x");
 			glScalef(scaleX, scaleY*-1, scaleZ);
 			
@@ -70,7 +79,11 @@ public abstract class Primitive {
 			if (textured) {
 				if (Visage.trace) Visage.log.finest("Enabling texturing - texture "+texture);
 				glEnable(GL_TEXTURE_2D);
-				glBindTexture(GL_TEXTURE_2D, texture == TextureType.ALL ? renderer.owner.shadowTexture : renderer.owner.texture);
+				if (texture == TextureType.ALL) {
+					glBindTexture(GL_TEXTURE_2D, renderer.owner.shadowTexture);
+				} else {
+					glBindTexture(GL_TEXTURE_2D, renderer.owner.skinFboTex);
+				}
 			} else {
 				if (Visage.trace) Visage.log.finest("Disabling texturing");
 				glDisable(GL_TEXTURE_2D);
@@ -90,7 +103,7 @@ public abstract class Primitive {
 					glBlendFunc(GL_ONE, GL_ZERO);
 					break;
 				case NONE:
-					if (Visage.trace) Visage.log.finest("No alpha - Enabling ONE/ZERO blend and alpha test");
+					if (Visage.trace) Visage.log.finest("No alpha - Enabling ONE/ZERO blend, disabling alpha test");
 					glEnable(GL_BLEND);
 					glBlendFunc(GL_ONE, GL_ZERO);
 					glDisable(GL_ALPHA_TEST);
@@ -140,6 +153,7 @@ public abstract class Primitive {
 				glVertex3f(x, y, z);
 			}
 			glEnd();*/
+			glDepthMask(true);
 		glPopMatrix();
 	}
 }

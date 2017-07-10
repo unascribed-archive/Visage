@@ -24,7 +24,6 @@
 
 package com.surgeplay.visage.renderer;
 
-import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -73,7 +72,6 @@ import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL12.*;
 import static org.lwjgl.opengl.GL14.*;
 import static org.lwjgl.opengl.GL15.*;
-import static org.lwjgl.opengl.GL20.*;
 import static org.lwjgl.opengl.GL30.*;
 import static org.lwjgl.system.MemoryUtil.*;
 
@@ -146,25 +144,27 @@ public class RenderContext extends Thread {
 	};
 	
 	private static final int CANVAS_WIDTH = 512;
-	private static final float CANVAS_WIDTHf = CANVAS_WIDTH;
 	private static final int CANVAS_HEIGHT = 832;
-	private static final float CANVAS_HEIGHTf = CANVAS_HEIGHT;
 	
-	private static final int SUPERSAMPLING = 4;
+	private static final int SKIN_SUPERSAMPLING = 16;
 	
 	private static final BufferedImage shadow;
+	private static final BufferedImage skinUnderlay;
 	static {
 		try {
 			shadow = ImageIO.read(ClassLoader.getSystemResource("shadow.png"));
+			skinUnderlay = ImageIO.read(ClassLoader.getSystemResource("skin_underlay.png"));
 		} catch (IOException e) {
 			throw new InternalError(e);
 		}
 	}
 	
-	public int cubeVbo, planeVbo, texture, shadowTexture;
+	public int cubeVbo, planeVbo, skinTexture, shadowTexture, skinUnderlayTexture;
 	
-	public int fbo, fboTex;
-	public int fxaaProgram;
+	public int fbo, fbo2, swapFbo, swapFboTex;
+	public int skinFbo, skinFboTex;
+	
+	public int renderPass;
 	
 	private static int nextId = 1;
 	public VisageRenderer parent;
@@ -211,6 +211,9 @@ public class RenderContext extends Thread {
 			if (!GL.getCapabilities().OpenGL30) {
 				throw new RuntimeException("OpenGL 3.0 is required");
 			}
+			if (!GL.getCapabilities().GL_ARB_texture_multisample) {
+				throw new RuntimeException("ARB_texture_multisample is required");
+			}
 			
 			if (parent.config.getBoolean("continuous") && parent.config.getBoolean("visible")) {
 				glfwSwapInterval(60);
@@ -226,11 +229,18 @@ public class RenderContext extends Thread {
 			planeVbo = ids.get();
 			checkGLError();
 			
-			IntBuffer textures = BufferUtils.createIntBuffer(3);
+			IntBuffer textures = BufferUtils.createIntBuffer(5);
 			glGenTextures(textures);
-			texture = textures.get();
+			skinTexture = textures.get();
 			shadowTexture = textures.get();
-			fboTex = textures.get();
+			skinFboTex = textures.get();
+			skinUnderlayTexture = textures.get();
+			swapFboTex = textures.get();
+			checkGLError();
+			
+			glBindTexture(GL_TEXTURE_2D, skinTexture);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 			checkGLError();
 			
 			Textures.upload(shadow, GL_RGBA8, shadowTexture);
@@ -238,30 +248,85 @@ public class RenderContext extends Thread {
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 			checkGLError();
 			
-			glBindTexture(GL_TEXTURE_2D, fboTex);
+			Textures.upload(skinUnderlay, GL_RGBA8, skinUnderlayTexture);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			checkGLError();
+			
+			glBindTexture(GL_TEXTURE_2D, skinFboTex);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 2);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, CANVAS_WIDTH*SUPERSAMPLING, CANVAS_HEIGHT*SUPERSAMPLING, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-			glTexImage2D(GL_TEXTURE_2D, 1, GL_RGBA8, (CANVAS_WIDTH*SUPERSAMPLING)/2, (CANVAS_HEIGHT*SUPERSAMPLING)/2, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-			glTexImage2D(GL_TEXTURE_2D, 2, GL_RGBA8, (CANVAS_WIDTH*SUPERSAMPLING)/4, (CANVAS_HEIGHT*SUPERSAMPLING)/4, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 64*SKIN_SUPERSAMPLING, 64*SKIN_SUPERSAMPLING, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			checkGLError();
+			
+			glBindTexture(GL_TEXTURE_2D, swapFboTex);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, CANVAS_WIDTH, CANVAS_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			checkGLError();
 			
 			fbo = glGenFramebuffers();
 			
 			int depth = glGenRenderbuffers();
 			
+			int color = glGenRenderbuffers();
+			
 			glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 			glDrawBuffer(GL_COLOR_ATTACHMENT0);
-			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTex, 0);
+			
 			glBindRenderbuffer(GL_RENDERBUFFER, depth);
-			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, CANVAS_WIDTH*SUPERSAMPLING, CANVAS_HEIGHT*SUPERSAMPLING);
+			glRenderbufferStorageMultisample(GL_RENDERBUFFER, 8, GL_DEPTH_COMPONENT24, CANVAS_WIDTH, CANVAS_HEIGHT);
+			
+			glBindRenderbuffer(GL_RENDERBUFFER, color);
+			glRenderbufferStorageMultisample(GL_RENDERBUFFER, 8, GL_RGBA8, CANVAS_WIDTH, CANVAS_HEIGHT);
+			
 			glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
+			glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, color);
+			checkFramebufferStatus();
+			
+			
+			fbo2 = glGenFramebuffers();
+			
+			int depth2 = glGenRenderbuffers();
+			int color2 = glGenRenderbuffers();
+			
+			glBindFramebuffer(GL_FRAMEBUFFER, fbo2);
+			glDrawBuffer(GL_COLOR_ATTACHMENT0);
+			
+			glBindRenderbuffer(GL_RENDERBUFFER, depth2);
+			glRenderbufferStorageMultisample(GL_RENDERBUFFER, 8, GL_DEPTH_COMPONENT24, CANVAS_WIDTH, CANVAS_HEIGHT);
+			
+			glBindRenderbuffer(GL_RENDERBUFFER, color2);
+			glRenderbufferStorageMultisample(GL_RENDERBUFFER, 8, GL_RGBA8, CANVAS_WIDTH, CANVAS_HEIGHT);
+			
+			glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth2);
+			glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, color2);
+			checkFramebufferStatus();
+			
+			
+			skinFbo = glGenFramebuffers();
+			
+			glBindFramebuffer(GL_FRAMEBUFFER, skinFbo);
+			glDrawBuffer(GL_COLOR_ATTACHMENT0);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, skinFboTex, 0);
 			checkFramebufferStatus();
 			
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			
+			
+			swapFbo = glGenFramebuffers();
+			
+			glBindFramebuffer(GL_FRAMEBUFFER, swapFbo);
+			glDrawBuffer(GL_COLOR_ATTACHMENT0);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, swapFboTex, 0);
+			checkFramebufferStatus();
+			
+			
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			
 			FloatBuffer vertexBuffer = BufferUtils.createFloatBuffer(vertices.length);
 			vertexBuffer.put(vertices);
@@ -324,6 +389,7 @@ public class RenderContext extends Thread {
 							.put("X-Alex", ImageIO.read(ClassLoader.getSystemResource("alex.png")))
 							.put("X-Steve", ImageIO.read(ClassLoader.getSystemResource("steve.png")))
 							.put("X-Test", ImageIO.read(ClassLoader.getSystemResource("test_skin.png")))
+							.put("X-Test-Legacy", ImageIO.read(ClassLoader.getSystemResource("test_legacy_skin.png")))
 							.put("Falkreon", ImageIO.read(URI.create("https://visage.surgeplay.com/skin/Falkreon").toURL()))
 							.put("unascribed", ImageIO.read(URI.create("https://visage.surgeplay.com/skin/unascribed").toURL()))
 							.put("Dinnerbone", ImageIO.read(URI.create("https://visage.surgeplay.com/skin/Dinnerbone").toURL()))
@@ -346,6 +412,8 @@ public class RenderContext extends Thread {
 					boolean[] showText = {true};
 					int[] skinIdx = {1};
 					int[] bgIdx = {1};
+					boolean[] skinOnly = {false};
+					boolean[] fbos = {true, true};
 					
 					glfwSetKeyCallback(window, new GLFWKeyCallback() {
 						@Override
@@ -368,6 +436,12 @@ public class RenderContext extends Thread {
 									renderers.clear();
 								} else if (key == GLFW_KEY_G) {
 									bgIdx[0] = (bgIdx[0]+1)%bgs.length;
+								} else if (key == GLFW_KEY_N) {
+									skinOnly[0] = !skinOnly[0];
+								} else if (key == GLFW_KEY_1) {
+									fbos[0] = !fbos[0];
+								} else if (key == GLFW_KEY_2) {
+									fbos[1] = !fbos[1];
 								}
 							}
 						}
@@ -386,7 +460,7 @@ public class RenderContext extends Thread {
 					
 					while (run) {
 						glfwPollEvents();
-						drawContinuous(skins.get(skinKeys[skinIdx[0]]), skinKeys[skinIdx[0]], bgs[bgIdx[0]], conf, pattern, fontBuffer, showText[0]);
+						drawContinuous(skins.get(skinKeys[skinIdx[0]]), skinKeys[skinIdx[0]], bgs[bgIdx[0]], conf, pattern, fontBuffer, showText[0], skinOnly[0], fbos[0], fbos[1]);
 						glfwSwapBuffers(window);
 					}
 				} else {
@@ -425,7 +499,7 @@ public class RenderContext extends Thread {
 	}
 
 	// TODO the debug interface should be moved to a separate class
-	private void drawContinuous(BufferedImage skin, String skinName, String bg, RenderConfiguration conf, ByteBuffer pattern, ByteBuffer fontBuf, boolean showText) throws Exception {
+	private void drawContinuous(BufferedImage skin, String skinName, String bg, RenderConfiguration conf, ByteBuffer pattern, ByteBuffer fontBuf, boolean showText, boolean skinOnly, boolean fbo1Enabled, boolean fbo2Enabled) throws Exception {
 		glColor3f(1, 1, 1);
 		int h = CANVAS_WIDTH;
 		if (conf.isFull()) {
@@ -451,12 +525,18 @@ public class RenderContext extends Thread {
 			glPolygonStipple(pattern);
 			glEnable(GL_POLYGON_STIPPLE);
 			glColor3f(fgTone, fgTone, fgTone);
-			glBegin(GL_QUADS); {
-				glVertex2f(0, conf.isFull() ? 0 : CANVAS_HEIGHT-CANVAS_WIDTH);
-				glVertex2f(CANVAS_WIDTH, conf.isFull() ? 0 : CANVAS_HEIGHT-CANVAS_WIDTH);
-				glVertex2f(CANVAS_WIDTH, CANVAS_HEIGHT);
-				glVertex2f(0, CANVAS_HEIGHT);
-			} glEnd();
+			if (skinOnly) {
+				int x = (CANVAS_WIDTH-384)/2;
+				int y = (CANVAS_HEIGHT-384)/2;
+				drawQuad(x, y, x+384, y+384);
+			} else {
+				glBegin(GL_QUADS); {
+					glVertex2f(0, conf.isFull() ? 0 : CANVAS_HEIGHT-CANVAS_WIDTH);
+					glVertex2f(CANVAS_WIDTH, conf.isFull() ? 0 : CANVAS_HEIGHT-CANVAS_WIDTH);
+					glVertex2f(CANVAS_WIDTH, CANVAS_HEIGHT);
+					glVertex2f(0, CANVAS_HEIGHT);
+				} glEnd();
+			}
 			glDisable(GL_POLYGON_STIPPLE);
 		} else if (bg.equals("Black")) {
 			glClearColor(0, 0, 0, 1);
@@ -469,12 +549,66 @@ public class RenderContext extends Thread {
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		}
 		
+		if (isKeyPressed(GLFW_KEY_DELETE)) {
+			renderers.values().forEach(Renderer::destroy);
+			renderers.clear();
+		}
+		
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);
 		glColor3f(1, 1, 1);
 		
 		glPushMatrix();
 			draw(conf, CANVAS_WIDTH, h, new GameProfile(new UUID(0L, 0L), "continuous_test"), skin, Collections.emptyMap());
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			
+			glDisable(GL_LIGHTING);
+			glColor3f(1, 1, 1);
+			glDisable(GL_ALPHA_TEST);
+			glDisable(GL_CULL_FACE);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			
+			glMatrixMode(GL_PROJECTION);
+			glLoadIdentity();
+			glOrtho(0, CANVAS_WIDTH, 0, CANVAS_HEIGHT, -10, 10);
+			glViewport(0, 0, CANVAS_WIDTH, h);
+			
+			glMatrixMode(GL_MODELVIEW);
+			glLoadIdentity();
+			
+			glViewport(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+			
+			if (skinOnly) {
+				glBindTexture(GL_TEXTURE_2D, skinFboTex);
+				int x = (CANVAS_WIDTH-384)/2;
+				int y = (CANVAS_HEIGHT-384)/2;
+				drawQuad(x, y, x+384, y+384, 0, 1, 1, 0);
+			} else {
+				if (fbo1Enabled) {
+					glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+					glBindFramebuffer(GL_DRAW_FRAMEBUFFER, swapFbo);
+					glBlitFramebuffer(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+					
+					glBindFramebuffer(GL_FRAMEBUFFER, 0);
+					glEnable(GL_BLEND);
+					glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+					glBindTexture(GL_TEXTURE_2D, swapFboTex);
+					drawQuad(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+				}
+				
+				if (fbo2Enabled) {
+					glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo2);
+					glBindFramebuffer(GL_DRAW_FRAMEBUFFER, swapFbo);
+					glBlitFramebuffer(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+					
+					glBindFramebuffer(GL_FRAMEBUFFER, 0);
+					glEnable(GL_BLEND);
+					glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+					glBindTexture(GL_TEXTURE_2D, swapFboTex);
+					drawQuad(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+				}
+			}
 		glPopMatrix();
 		
 		glPushMatrix();
@@ -489,15 +623,23 @@ public class RenderContext extends Thread {
 			if (showText) {
 				drawText(fontBuf, false, "backGround: "+bg, 5, color(true, isKeyPressed(GLFW_KEY_G)));
 				drawText(fontBuf, false, "sKin: "+skinName, 15, color(true, isKeyPressed(GLFW_KEY_K)));
-				drawText(fontBuf, false, "Type: "+conf.getType(), 25, color(true, isKeyPressed(GLFW_KEY_T)));
 				
-				drawText(fontBuf, true, "Slim          ", 5, color(conf.isSlim(), isKeyPressed(GLFW_KEY_S)));
+				if (!skinOnly) {
+					drawText(fontBuf, false, "Type: "+conf.getType(), 25, color(true, isKeyPressed(GLFW_KEY_T)));
+					drawText(fontBuf, true, "Slim          ", 5, color(conf.isSlim(), isKeyPressed(GLFW_KEY_S)));
+					
+					drawText(fontBuf, true, "fliP     ", 5, color(conf.isFlipped(), isKeyPressed(GLFW_KEY_P)));
+					
+					drawText(fontBuf, true, "Full", 5, color(conf.isFull(), isKeyPressed(GLFW_KEY_F)));
+					drawText(fontBuf, true, "skiN only", 15, color(skinOnly, isKeyPressed(GLFW_KEY_N)));
+					drawText(fontBuf, true, "1  ", 25, color(fbo1Enabled, isKeyPressed(GLFW_KEY_1)));
+					drawText(fontBuf, true, "2", 25, color(fbo2Enabled, isKeyPressed(GLFW_KEY_2)));
+					
+					drawText(fontBuf, false, "DELETE to clear cache", (CANVAS_HEIGHT/2)-15, color(true, isKeyPressed(GLFW_KEY_DELETE)));
+				} else {
+					drawText(fontBuf, true, "skiN only", 5, color(skinOnly, isKeyPressed(GLFW_KEY_N)));
+				}
 				
-				drawText(fontBuf, true, "fliP     ", 5, color(conf.isFlipped(), isKeyPressed(GLFW_KEY_P)));
-				
-				drawText(fontBuf, true, "Full", 5, color(conf.isFull(), isKeyPressed(GLFW_KEY_F)));
-				
-				drawText(fontBuf, false, "DELETE to clear cache", (CANVAS_HEIGHT/2)-15, color(true, isKeyPressed(GLFW_KEY_DELETE)));
 				drawText(fontBuf, true, "SPACE to hide text", (CANVAS_HEIGHT/2)-15, color(true, isKeyPressed(GLFW_KEY_SPACE)));
 			}
 			
@@ -611,6 +753,7 @@ public class RenderContext extends Thread {
 		
 		RenderConfiguration conf = new RenderConfiguration(Type.fromMode(mode), Profiles.isSlim(profile), mode.isTall(), Profiles.isFlipped(profile));
 		
+		glClearColor(0, 0, 0, 0);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		byte[] pngBys = draw(conf, width, height, profile, skin, params);
 		if (Visage.trace) Visage.log.finest("Got png bytes");
@@ -634,16 +777,6 @@ public class RenderContext extends Thread {
 	public byte[] draw(RenderConfiguration conf, int width, int height, GameProfile profile, BufferedImage skin, Map<String, String[]> params) throws Exception {
 		//BufferedImage cape;
 		BufferedImage out;
-		if (skin.getHeight() == 32) {
-			if (Visage.debug) Visage.log.finer("Skin is legacy; painting onto new-style canvas");
-			BufferedImage canvas = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
-			Graphics2D g = canvas.createGraphics();
-			g.drawImage(skin, 0, 0, null);
-			g.drawImage(flipLimb(skin.getSubimage(0, 16, 16, 16)), 16, 48, null);
-			g.drawImage(flipLimb(skin.getSubimage(40, 16, 16, 16)), 32, 48, null);
-			g.dispose();
-			skin = canvas;
-		}
 		int color = skin.getRGB(32, 8);
 		boolean equal = true;
 		for (int x = 32; x < 64; x++) {
@@ -668,53 +801,89 @@ public class RenderContext extends Thread {
 		Renderer renderer = renderers.get(conf);
 		try {
 			if (Visage.trace) Visage.log.finest("Uploading");
-			renderer.setSkin(skin);
+			Textures.upload(skin, GL_RGBA8, skinTexture);
 			if (Visage.trace) Visage.log.finest("Rendering");
 			
-			glUseProgram(0);
-			glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+			glBindFramebuffer(GL_FRAMEBUFFER, skinFbo);
 			glClearColor(0, 0, 0, 0);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			renderer.render(width*SUPERSAMPLING, height*SUPERSAMPLING);
 			
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			glMatrixMode(GL_PROJECTION);
+			glLoadIdentity();
+			glViewport(0, 0, 64*SKIN_SUPERSAMPLING, 64*SKIN_SUPERSAMPLING);
+			glOrtho(0, 64, 0, 64, -1, 1);
+			
+			glMatrixMode(GL_MODELVIEW);
+			glLoadIdentity();
+			
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			
+			glEnable(GL_TEXTURE_2D);
 			
 			glDisable(GL_LIGHTING);
 			glColor3f(1, 1, 1);
 			glDisable(GL_ALPHA_TEST);
 			glDisable(GL_CULL_FACE);
-			glEnable(GL_BLEND);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			glBindTexture(GL_TEXTURE_2D, fboTex);
-			glGenerateMipmap(GL_TEXTURE_2D);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 			
-			glMatrixMode(GL_PROJECTION);
-			glLoadIdentity();
-			glOrtho(-1, 1, -1, 1, -10, 10);
-			glViewport(0, 0, width, height);
+			glBindTexture(GL_TEXTURE_2D, skinUnderlayTexture);
+			drawQuad(0, 0, 64, 64);
 			
-			glMatrixMode(GL_MODELVIEW);
-			glLoadIdentity();
+			glBindTexture(GL_TEXTURE_2D, skinTexture);
+			if (skin.getHeight() == 32) {
+				drawQuad(0, 0, 64, 32);
+				drawFlippedLimb(16, 48, 0, 16);
+				drawFlippedLimb(32, 48, 40, 16);
+			} else {
+				drawQuad(0, 0, 64, 64);
+			}
 			
-			glViewport(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 			
-			float s = 1f;
 			
-			glBegin(GL_QUADS); {
-				glTexCoord2f(0, 0);
-				glVertex2f(-s, -s);
-				glTexCoord2f(1, 0);
-				glVertex2f(s, -s);
-				glTexCoord2f(1, 1);
-				glVertex2f(s, s);
-				glTexCoord2f(0, 1);
-				glVertex2f(-s, s);
-			} glEnd();
-			glUseProgram(0);
+			glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+			
+			glClearColor(0, 0, 0, 0);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			renderPass = 1;
+			renderer.render(width, height);
+			
+			glBindFramebuffer(GL_FRAMEBUFFER, fbo2);
+			glClearColor(0, 0, 0, 0);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			
+			glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo2);
+			glBlitFramebuffer(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+			
+			glBindFramebuffer(GL_FRAMEBUFFER, fbo2);
+			
+			renderPass = 2;
+			renderer.render(width, height);
+			
+			
 			
 			if (!parent.config.getBoolean("continuous")) {
 				if (Visage.trace) Visage.log.finest("Rendered - reading pixels");
+				glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+				glBindFramebuffer(GL_DRAW_FRAMEBUFFER, swapFbo);
+				glBlitFramebuffer(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+				
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+				glEnable(GL_BLEND);
+				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+				glBindTexture(GL_TEXTURE_2D, swapFboTex);
+				drawQuad(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+			
+				glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo2);
+				glBindFramebuffer(GL_DRAW_FRAMEBUFFER, swapFbo);
+				glBlitFramebuffer(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+				
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+				glEnable(GL_BLEND);
+				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+				glBindTexture(GL_TEXTURE_2D, swapFboTex);
+				drawQuad(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+				
 				out = renderer.readPixels(width, height);
 			} else {
 				out = null;
@@ -749,35 +918,40 @@ public class RenderContext extends Thread {
 		}
 	}
 
-	private BufferedImage flipLimb(BufferedImage in) {
-		BufferedImage out = new BufferedImage(in.getWidth(), in.getHeight(), BufferedImage.TYPE_INT_ARGB);
+	private void drawFlippedLimb(int x, int y, int u, int v) {
+		drawFlippedSkinQuad(x+4, y+4, u+4, v+4, 4, 12);
+		drawFlippedSkinQuad(x+12, y+4, u+12, v+4, 4, 12);
 		
-		BufferedImage front = flipHorziontally(in.getSubimage(4, 4, 4, 12));
-		BufferedImage back = flipHorziontally(in.getSubimage(12, 4, 4, 12));
+		drawFlippedSkinQuad(x+4, y+0, u+4, v+0, 4, 4);
+		drawFlippedSkinQuad(x+8, y+0, u+8, v+0, 4, 4);
 		
-		BufferedImage top = flipHorziontally(in.getSubimage(4, 0, 4, 4));
-		BufferedImage bottom = flipHorziontally(in.getSubimage(8, 0, 4, 4));
-		
-		BufferedImage left = in.getSubimage(8, 4, 4, 12);
-		BufferedImage right = in.getSubimage(0, 4, 4, 12);
-		
-		Graphics2D g = out.createGraphics();
-		g.drawImage(front, 4, 4, null);
-		g.drawImage(back, 12, 4, null);
-		g.drawImage(top, 4, 0, null);
-		g.drawImage(bottom, 8, 0, null);
-		g.drawImage(left, 0, 4, null); // left goes to right
-		g.drawImage(right, 8, 4, null); // right goes to left
-		g.dispose();
-		return out;
+		drawSkinQuad(x+0, y+4, u+8, v+4, 4, 12);
+		drawSkinQuad(x+8, y+4, u+0, v+4, 4, 12);
+	}
+
+	private void drawFlippedSkinQuad(int x, int y, int u, int v, int w, int h) {
+		drawQuad(x, y, x+w, y+h, (u+w)/64f, (v)/32f, (u)/64f, (v+h)/32f);
 	}
 	
-	private BufferedImage flipHorziontally(BufferedImage in) {
-		BufferedImage out = new BufferedImage(in.getWidth(), in.getHeight(), BufferedImage.TYPE_INT_ARGB);
-		Graphics2D g = out.createGraphics();
-		g.drawImage(in, 0, 0, in.getWidth(), in.getHeight(), in.getWidth(), 0, 0, in.getHeight(), null);
-		g.dispose();
-		return out;
+	private void drawSkinQuad(int x, int y, int u, int v, int w, int h) {
+		drawQuad(x, y, x+w, y+h, (u)/64f, (v)/32f, (u+w)/64f, (v+h)/32f);
+	}
+
+	private void drawQuad(float x1, float y1, float x2, float y2, float u1, float v1, float u2, float v2) {
+		glBegin(GL_QUADS); {
+			glTexCoord2f(u1, v1);
+			glVertex2f(x1, y1);
+			glTexCoord2f(u2, v1);
+			glVertex2f(x2, y1);
+			glTexCoord2f(u2, v2);
+			glVertex2f(x2, y2);
+			glTexCoord2f(u1, v2);
+			glVertex2f(x1, y2);
+		} glEnd();
+	}
+	
+	private void drawQuad(float x1, float y1, float x2, float y2) {
+		drawQuad(x1, y1, x2, y2, 0, 0, 1, 1);
 	}
 	
 	public void finish() {

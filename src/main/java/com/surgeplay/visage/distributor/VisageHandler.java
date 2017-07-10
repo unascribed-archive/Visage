@@ -24,6 +24,11 @@
 
 package com.surgeplay.visage.distributor;
 
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -204,7 +209,11 @@ public class VisageHandler extends AbstractHandler {
 		}
 		int rounded = Math.round(height / (float) granularity)*granularity;
 		if (rounded != height) {
-			sendPermanentRedirect(baseUrl+"/"+modeStr+"/"+rounded+"/"+subject, response);
+			String query = "";
+			if (request.getQueryString() != null) {
+				query = "?"+request.getQueryString();
+			}
+			sendPermanentRedirect(baseUrl+"/"+modeStr+"/"+rounded+"/"+subject+query, response);
 			return;
 		}
 		
@@ -258,7 +267,11 @@ public class VisageHandler extends AbstractHandler {
 									return;
 								} else if (result[0] instanceof UUID) {
 									uuid = (UUID) result[0];
-									response.sendRedirect(baseUrl+"/"+modeStr+"/"+height+"/"+uuid.toString().replace("-", ""));
+									String query = "";
+									if (request.getQueryString() != null) {
+										query = "&"+request.getQueryString();
+									}
+									response.sendRedirect(baseUrl+"/"+modeStr+"/"+height+"/"+uuid.toString().replace("-", "")+"?resolvedUsername"+query);
 									j.set(subject, uuid.toString());
 									j.pexpire(subject, resolverTtlMillis);
 									return;
@@ -305,7 +318,6 @@ public class VisageHandler extends AbstractHandler {
 					sj.pexpire(uuid.toString()+":profile", skinTtlMillis);
 				}
 			}
-			System.out.println(profile);
 			if (skinResp != null && skinResp.length > 3) {
 				skin = skinResp;
 			} else {
@@ -352,8 +364,6 @@ public class VisageHandler extends AbstractHandler {
 			}
 		}
 		
-		System.out.println(profile);
-		
 		if (mode == RenderMode.SKIN) {
 			write(response, missed, skin, "none");
 			return;
@@ -373,7 +383,40 @@ public class VisageHandler extends AbstractHandler {
 			if (resp == null) {
 				continue;
 			}
-			write(response, missed, resp.png, resp.renderer);
+			byte[] png = resp.png;
+			if (request.getParameter("resolvedUsername") != null) {
+				BufferedImage img = ImageIO.read(new ByteArrayInputStream(png));
+				Graphics2D g = img.createGraphics();
+				g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+				g.setColor(Color.RED);
+				g.fillRect(0, 0, img.getWidth(), 8);
+				g.fillRect(0, 0, 8, img.getHeight());
+				g.fillRect(img.getWidth()-8, 0, 8, img.getHeight());
+				g.fillRect(0, img.getHeight()-8, img.getWidth(), 8);
+				if (img.getWidth() >= 480) {
+					g.setFont(Font.decode("Dialog-Bold").deriveFont(48f));
+					g.drawString("USERNAME RENDER", 12, 56);
+				} else if (img.getWidth() >= 256) {
+					g.setFont(Font.decode("Dialog-Bold").deriveFont(24f));
+					g.drawString("USERNAME RENDER", 12, 32);
+				} else if (img.getWidth() >= 144) {
+					g.setFont(Font.decode("Dialog-Bold").deriveFont(12f));
+					g.drawString("USERNAME RENDER", 12, 24);
+				} else if (img.getWidth() >= 96) {
+					g.setFont(Font.decode("Dialog-Bold").deriveFont(12f));
+					g.drawString("USERNAME", 12, 24);
+					g.drawString("RENDER", 12, 38);
+				} else if (img.getWidth() >= 64) {
+					g.setFont(Font.decode("Dialog").deriveFont(8f));
+					g.drawString("USERNAME", 10, 18);
+					g.drawString("RENDER", 10, 26);
+				}
+				g.dispose();
+				ByteArrayOutputStream baos = new ByteArrayOutputStream();
+				ImageIO.write(img, "PNG", baos);
+				png = baos.toByteArray();
+			}
+			write(response, missed, png, resp.renderer);
 			return;
 		}
 		if (ex != null) {

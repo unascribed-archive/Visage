@@ -27,7 +27,7 @@ package com.surgeplay.visage.renderer.render;
 import com.surgeplay.visage.renderer.RenderContext;
 import com.surgeplay.visage.renderer.render.primitive.Cube;
 import com.surgeplay.visage.renderer.render.primitive.Plane;
-import com.surgeplay.visage.renderer.render.primitive.Stage;
+import com.surgeplay.visage.renderer.render.primitive.Group;
 
 public class BodyRenderer extends Renderer {
 	
@@ -38,15 +38,15 @@ public class BodyRenderer extends Renderer {
 	@Override
 	protected void initPrimitives(boolean slim, boolean full, boolean flip) {
 		float tilt = -10;
-		float angle = flip ? -20 : 20;
+		float angle = 20;
 		
-		Stage stage = new Stage();
-		stage.x = 0;
-		stage.y = full ? (flip ? -2.7f : -2.8f) : -1f;
-		stage.z = full ? -10.35f : -6f;
-		stage.rotX = tilt;
-		stage.rotY = angle;
-		addPrimitive(stage);
+		Group group = new Group();
+		group.x = 0;
+		group.y = full ? (flip ? -2.7f : -2.8f) : -1f;
+		group.z = full ? -10.35f : -6f;
+		group.rotX = tilt;
+		group.rotY = angle;
+		addPrimitive(group);
 		
 		if (full || flip) {
 			Plane shadow = new Plane();
@@ -56,129 +56,160 @@ public class BodyRenderer extends Renderer {
 			shadow.texture = TextureType.ALL;
 			shadow.lit = false;
 			shadow.alphaMode = AlphaMode.FULL;
-			stage.members.add(shadow);
+			group.members.add(shadow);
 		}
 		
-		Stage stage2 = new Stage();
+		Group group2 = new Group();
 		if (flip) {
-			stage2.rotZ = 180;
-			stage2.y = ((-stage.y)*2)+(full ? 0.3f : -0.25f);
+			group2.rotZ = 180;
+			group2.y = ((-group.y)*2)+(full ? 0.3f : -0.25f);
 		}
-		stage.members.add(stage2);
+		group.members.add(group2);
 		
-		Cube larm = new Cube();
-		larm.x = slim ? 1.625f : 1.75f;
-		larm.y = 2.375f;
-		larm.z = -0.1f;
-		larm.scaleY = 1.5f;
-		larm.scaleZ = 0.5f;
-		larm.scaleX = slim ? 0.375f : 0.5f;
-		larm.rotZ = -10f;
-		larm.texture = slim ? TextureType.LARM_SLIM : TextureType.LARM;
-		larm.alphaMode = AlphaMode.NONE;
-		stage2.members.add(larm);
-		Cube larm2 = new Cube();
-		larm2.x = slim ? 1.575f : 1.7f;
-		larm2.y = 2.35f;
-		larm2.z = -0.1f;
-		larm2.scaleY = 1.55f;
-		larm2.scaleZ = 0.54f;
-		larm2.scaleX = slim ? 0.425f : 0.55f;
-		larm2.rotZ = -10f;
-		larm2.texture = slim ? TextureType.LARM2_SLIM : TextureType.LARM2;
-		larm2.alphaMode = AlphaMode.MASK;
-		stage2.members.add(larm2);
+		Cube head = new Cube();
+		head.texture = TextureType.HEAD;
+		head.alphaMode = AlphaMode.NONE;
 		
-		Cube lleg = new Cube();
-		lleg.x = 0.5f;
-		lleg.y = 5.475f;
-		lleg.scaleY = 1.5f;
-		lleg.scaleZ = 0.5f;
-		lleg.scaleX = 0.5f;
-		lleg.texture = TextureType.LLEG;
-		lleg.alphaMode = AlphaMode.NONE;
-		stage2.members.add(lleg);
+		Cube head2 = new Cube();
+		head2.scaleX = head2.scaleY = head2.scaleZ = 1.05f;
+		head2.texture = TextureType.HEAD2;
+		head2.alphaMode = AlphaMode.FULL;
+		head2.depthMask = false;
+		head2.renderPass = 2;
 		
-		Cube rleg = new Cube();
-		rleg.x = -0.5f;
-		rleg.y = 5.475f;
-		rleg.scaleY = 1.5f;
-		rleg.scaleZ = 0.5f;
-		rleg.scaleX = 0.5f;
-		rleg.texture = TextureType.RLEG;
-		rleg.alphaMode = AlphaMode.NONE;
-		stage2.members.add(rleg);
+		
 		
 		Cube body = new Cube();
-		body.y = 2.475f;
+		body.y = 2.5f;
 		body.scaleY = 1.5f;
 		body.scaleZ = 0.5f;
 		body.texture = TextureType.BODY;
 		body.alphaMode = AlphaMode.NONE;
-		stage2.members.add(body);
+		
 		Cube body2 = new Cube();
 		body2.y = 2.5f;
 		body2.scaleY = 1.55f;
 		body2.scaleZ = 0.55f;
 		body2.scaleX = 1.05f;
 		body2.texture = TextureType.BODY2;
-		body2.alphaMode = AlphaMode.MASK;
-		stage2.members.add(body2);
+		body2.alphaMode = AlphaMode.FULL;
+		body2.depthMask = false;
+		body2.renderPass = 2;
 		
-		Cube lleg2 = new Cube();
-		lleg2.x = 0.475f;
-		lleg2.y = 5.4f;
-		lleg2.scaleY = 1.55f;
-		lleg2.scaleZ = 0.55f;
-		lleg2.scaleX = 0.55f;
-		lleg2.texture = TextureType.LLEG2;
-		lleg2.alphaMode = AlphaMode.MASK;
-		stage2.members.add(lleg2);
+
 		
-		Cube rleg2 = new Cube();
-		rleg2.x = -0.525f;
-		rleg2.y = 5.4f;
-		rleg2.scaleY = 1.55f;
-		rleg2.scaleZ = 0.55f;
-		rleg2.scaleX = 0.55f;
-		rleg2.texture = TextureType.RLEG2;
-		rleg2.alphaMode = AlphaMode.MASK;
-		stage2.members.add(rleg2);
+		Cube larm = new Cube();
+		larm.x = slim ? 1.375f : 1.5f;
+		larm.y = 2.5f;
+		larm.scaleY = 1.5f;
+		larm.scaleZ = 0.5f;
+		larm.scaleX = slim ? 0.375f : 0.5f;
+		larm.anchorX = -larm.scaleX;
+		larm.anchorY = -larm.scaleY;
+		larm.rotZ = -10f;
+		larm.texture = slim ? TextureType.LARM_SLIM : TextureType.LARM;
+		larm.alphaMode = AlphaMode.NONE;
 		
-		Cube head = new Cube();
-		head.y = -0.025f;
-		head.z = -0.025f;
-		head.texture = TextureType.HEAD;
-		head.alphaMode = AlphaMode.NONE;
-		stage2.members.add(head);
-		Cube helm = new Cube();
-		helm.scaleX = helm.scaleY = helm.scaleZ = 1.05f;
-		helm.texture = TextureType.HEAD2;
-		helm.alphaMode = AlphaMode.MASK;
-		stage2.members.add(helm);
+		Cube larm2 = new Cube();
+		larm2.x = slim ? 1.375f : 1.5f;
+		larm2.y = 2.5f;
+		larm2.scaleY = 1.55f;
+		larm2.scaleZ = 0.55f;
+		larm2.scaleX = slim ? 0.425f : 0.55f;
+		larm2.anchorX = -larm2.scaleX;
+		larm2.anchorY = -larm2.scaleY;
+		larm2.rotZ = -10f;
+		larm2.texture = slim ? TextureType.LARM2_SLIM : TextureType.LARM2;
+		larm2.alphaMode = AlphaMode.FULL;
+		larm2.depthMask = false;
+		larm2.renderPass = 2;
+		
 		
 		Cube rarm = new Cube();
-		rarm.x = slim ? -1.625f : -1.75f;
-		rarm.y = 2.325f;
-		rarm.z = 0.15f;
+		rarm.x = slim ? -1.375f : -1.5f;
+		rarm.y = 2.5f;
 		rarm.scaleY = 1.5f;
 		rarm.scaleZ = 0.5f;
 		rarm.scaleX = slim ? 0.375f : 0.5f;
+		rarm.anchorX = rarm.scaleX;
+		rarm.anchorY = -rarm.scaleY;
 		rarm.rotZ = 10f;
 		rarm.texture = slim ? TextureType.RARM_SLIM : TextureType.RARM;
 		rarm.alphaMode = AlphaMode.NONE;
-		stage2.members.add(rarm);
+		
 		Cube rarm2 = new Cube();
-		rarm2.x = slim ? -1.625f : -1.7f;
-		rarm2.y = 2.3f;
-		rarm2.z = 0.15f;
+		rarm2.x = slim ? -1.375f : -1.5f;
+		rarm2.y = 2.5f;
 		rarm2.scaleY = 1.55f;
 		rarm2.scaleZ = 0.55f;
-		rarm2.scaleX = slim ? 0.375f : 0.55f;
+		rarm2.scaleX = slim ? 0.425f : 0.55f;
+		rarm2.anchorX = rarm2.scaleX;
+		rarm2.anchorY = -rarm2.scaleY;
 		rarm2.rotZ = 10f;
 		rarm2.texture = slim ? TextureType.RARM2_SLIM : TextureType.RARM2;
-		rarm2.alphaMode = AlphaMode.MASK;
-		stage2.members.add(rarm2);
+		rarm2.alphaMode = AlphaMode.FULL;
+		rarm2.depthMask = false;
+		rarm2.renderPass = 2;
+		
+		
+		Cube lleg = new Cube();
+		lleg.x = 0.5f;
+		lleg.y = 5.5f;
+		lleg.scaleY = 1.5f;
+		lleg.scaleZ = 0.5f;
+		lleg.scaleX = 0.5f;
+		lleg.anchorY = -lleg.scaleY;
+		lleg.texture = TextureType.LLEG;
+		lleg.alphaMode = AlphaMode.NONE;
+		
+		Cube lleg2 = new Cube();
+		lleg2.x = 0.5f;
+		lleg2.y = 5.5f;
+		lleg2.scaleY = 1.55f;
+		lleg2.scaleZ = 0.55f;
+		lleg2.scaleX = 0.55f;
+		lleg2.anchorY = -lleg2.scaleY;
+		lleg2.texture = TextureType.LLEG2;
+		lleg2.alphaMode = AlphaMode.FULL;
+		lleg2.depthMask = false;
+		lleg2.renderPass = 2;
+		
+		
+		Cube rleg = new Cube();
+		rleg.x = -0.5f;
+		rleg.y = 5.5f;
+		rleg.scaleY = 1.5f;
+		rleg.scaleZ = 0.5f;
+		rleg.scaleX = 0.5f;
+		rleg.anchorY = -rleg.scaleY;
+		rleg.texture = TextureType.RLEG;
+		rleg.alphaMode = AlphaMode.NONE;
+		
+		Cube rleg2 = new Cube();
+		rleg2.x = -0.5f;
+		rleg2.y = 5.5f;
+		rleg2.scaleY = 1.55f;
+		rleg2.scaleZ = 0.55f;
+		rleg2.scaleX = 0.55f;
+		rleg2.anchorY = -rleg2.scaleY;
+		rleg2.texture = TextureType.RLEG2;
+		rleg2.alphaMode = AlphaMode.FULL;
+		rleg2.depthMask = false;
+		rleg2.renderPass = 2;
+		
+		group2.members.add(head);
+		group2.members.add(body);
+		group2.members.add(larm);
+		group2.members.add(rarm);
+		group2.members.add(lleg);
+		group2.members.add(rleg);
+		
+		group2.members.add(lleg2);
+		group2.members.add(rleg2);
+		group2.members.add(body2);
+		group2.members.add(head2);
+		group2.members.add(larm2);
+		group2.members.add(rarm2);
 	}
 
 }

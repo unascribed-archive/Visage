@@ -26,7 +26,7 @@ package com.surgeplay.visage.renderer.render;
 
 import com.surgeplay.visage.renderer.RenderContext;
 import com.surgeplay.visage.renderer.render.primitive.Plane;
-import com.surgeplay.visage.renderer.render.primitive.Stage;
+import com.surgeplay.visage.renderer.render.primitive.Group;
 
 public class FaceRenderer extends Renderer {
 
@@ -36,7 +36,7 @@ public class FaceRenderer extends Renderer {
 
 	@Override
 	protected void initPrimitives(boolean slim, boolean full, boolean flip) {
-		Stage stage = new Stage();
+		Group stage = new Group();
 		stage.y = 0;
 		stage.z = -2.5f;
 		stage.rotZ = 0;
@@ -53,9 +53,9 @@ public class FaceRenderer extends Renderer {
 		stage.members.add(head);
 		Plane helm = new Plane();
 		helm.scaleX = helm.scaleY = helm.scaleZ = 1.05f;
-		helm.z = -0.0001f;
 		helm.texture = TextureType.HEAD2_FRONT;
-		helm.alphaMode = AlphaMode.MASK;
+		helm.alphaMode = AlphaMode.FULL;
+		helm.depthMask = false;
 		stage.members.add(helm);
 	}
 

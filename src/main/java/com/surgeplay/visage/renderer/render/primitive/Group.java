@@ -32,7 +32,7 @@ import com.google.common.collect.Lists;
 import com.surgeplay.visage.Visage;
 import com.surgeplay.visage.renderer.render.Renderer;
 
-public class Stage extends Primitive {
+public class Group extends Primitive {
 	public final List<Primitive> members = Lists.newArrayList();
 	@Override
 	public void render(Renderer renderer) {

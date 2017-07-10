@@ -27,7 +27,7 @@ package com.surgeplay.visage.renderer.render;
 import com.surgeplay.visage.renderer.RenderContext;
 import com.surgeplay.visage.renderer.render.primitive.Cube;
 import com.surgeplay.visage.renderer.render.primitive.Plane;
-import com.surgeplay.visage.renderer.render.primitive.Stage;
+import com.surgeplay.visage.renderer.render.primitive.Group;
 
 
 public class HeadRenderer extends Renderer {
@@ -41,7 +41,7 @@ public class HeadRenderer extends Renderer {
 		float tilt = -20;
 		float angle = -35;
 		
-		Stage stage = new Stage();
+		Group stage = new Group();
 		stage.y = -0.25f;
 		stage.z = -5f;
 		stage.rotX = tilt;
@@ -65,12 +65,12 @@ public class HeadRenderer extends Renderer {
 		stage.members.add(head);
 		Cube helm = new Cube();
 		helm.scaleX = helm.scaleY = helm.scaleZ = 1.05f;
-		helm.z = -0f;
 		if (flip) {
 			helm.rotZ = 180f;
 		}
 		helm.texture = TextureType.HEAD2;
-		helm.alphaMode = AlphaMode.MASK;
+		helm.alphaMode = AlphaMode.FULL;
+		helm.depthMask = false;
 		stage.members.add(helm);
 	}
 }
