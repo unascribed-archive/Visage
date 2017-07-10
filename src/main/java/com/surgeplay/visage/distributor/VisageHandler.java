@@ -24,11 +24,6 @@
 
 package com.surgeplay.visage.distributor;
 
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
-import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -269,9 +264,10 @@ public class VisageHandler extends AbstractHandler {
 									uuid = (UUID) result[0];
 									String query = "";
 									if (request.getQueryString() != null) {
-										query = "&"+request.getQueryString();
+										//query = "&"+request.getQueryString();
+										query = "?"+request.getQueryString();
 									}
-									response.sendRedirect(baseUrl+"/"+modeStr+"/"+height+"/"+uuid.toString().replace("-", "")+"?resolvedUsername"+query);
+									response.sendRedirect(baseUrl+"/"+modeStr+"/"+height+"/"+uuid.toString().replace("-", "")/*+"?resolvedUsername"*/+query);
 									j.set(subject, uuid.toString());
 									j.pexpire(subject, resolverTtlMillis);
 									return;
@@ -384,7 +380,7 @@ public class VisageHandler extends AbstractHandler {
 				continue;
 			}
 			byte[] png = resp.png;
-			if (request.getParameter("resolvedUsername") != null) {
+			/*if (request.getParameter("resolvedUsername") != null) {
 				BufferedImage img = ImageIO.read(new ByteArrayInputStream(png));
 				Graphics2D g = img.createGraphics();
 				g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
@@ -415,7 +411,7 @@ public class VisageHandler extends AbstractHandler {
 				ByteArrayOutputStream baos = new ByteArrayOutputStream();
 				ImageIO.write(img, "PNG", baos);
 				png = baos.toByteArray();
-			}
+			}*/
 			write(response, missed, png, resp.renderer);
 			return;
 		}

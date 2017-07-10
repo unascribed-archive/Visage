@@ -71,6 +71,7 @@ public class HeadRenderer extends Renderer {
 		helm.texture = TextureType.HEAD2;
 		helm.alphaMode = AlphaMode.FULL;
 		helm.depthMask = false;
+		helm.renderPass = 2;
 		stage.members.add(helm);
 	}
 }

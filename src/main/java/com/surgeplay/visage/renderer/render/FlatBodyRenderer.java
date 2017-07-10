@@ -109,6 +109,7 @@ public class FlatBodyRenderer extends Renderer {
 		helm.texture = TextureType.HEAD2_FRONT;
 		helm.alphaMode = AlphaMode.FULL;
 		helm.depthMask = false;
+		helm.renderPass = 2;
 		stage.members.add(helm);
 		
 		Plane body2 = new Plane();
@@ -118,6 +119,7 @@ public class FlatBodyRenderer extends Renderer {
 		body2.texture = TextureType.BODY2_FRONT;
 		body2.alphaMode = AlphaMode.FULL;
 		body2.depthMask = false;
+		body2.renderPass = 2;
 		stage.members.add(body2);
 		
 		Plane rarm2 = new Plane();
@@ -128,6 +130,7 @@ public class FlatBodyRenderer extends Renderer {
 		rarm2.texture = slim ? TextureType.RARM2_SLIM_FRONT : TextureType.RARM2_FRONT;
 		rarm2.alphaMode = AlphaMode.FULL;
 		rarm2.depthMask = false;
+		rarm2.renderPass = 2;
 		stage.members.add(rarm2);
 		
 		Plane larm2 = new Plane();
@@ -138,6 +141,7 @@ public class FlatBodyRenderer extends Renderer {
 		larm2.texture = slim ? TextureType.LARM2_SLIM_FRONT : TextureType.LARM2_FRONT;
 		larm2.alphaMode = AlphaMode.FULL;
 		larm2.depthMask = false;
+		larm2.renderPass = 2;
 		stage.members.add(larm2);
 		
 		Plane lleg2 = new Plane();
@@ -148,6 +152,7 @@ public class FlatBodyRenderer extends Renderer {
 		lleg2.texture = TextureType.LLEG2_FRONT;
 		lleg2.alphaMode = AlphaMode.FULL;
 		lleg2.depthMask = false;
+		lleg2.renderPass = 2;
 		stage.members.add(lleg2);
 		
 		Plane rleg2 = new Plane();
@@ -158,6 +163,7 @@ public class FlatBodyRenderer extends Renderer {
 		rleg2.texture = TextureType.RLEG2_FRONT;
 		rleg2.alphaMode = AlphaMode.FULL;
 		rleg2.depthMask = false;
+		rleg2.renderPass = 2;
 		stage.members.add(rleg2);
 	}
 
