@@ -241,9 +241,12 @@ public class RenderContext extends Thread {
 			glBindTexture(GL_TEXTURE_2D, fboTex);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 2);
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, CANVAS_WIDTH*SUPERSAMPLING, CANVAS_HEIGHT*SUPERSAMPLING, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+			glTexImage2D(GL_TEXTURE_2D, 1, GL_RGBA8, (CANVAS_WIDTH*SUPERSAMPLING)/2, (CANVAS_HEIGHT*SUPERSAMPLING)/2, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+			glTexImage2D(GL_TEXTURE_2D, 2, GL_RGBA8, (CANVAS_WIDTH*SUPERSAMPLING)/4, (CANVAS_HEIGHT*SUPERSAMPLING)/4, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 			
 			fbo = glGenFramebuffers();
 			
@@ -331,8 +334,18 @@ public class RenderContext extends Thread {
 					RenderConfiguration conf = new RenderConfiguration(Type.BODY, false, true, false);
 					String[] skinKeys = skins.keySet().toArray(new String[skins.size()]);
 					
+					String[] bgs = {
+							"Light Checkers",
+							"Mid Checkers",
+							"Dark Checkers",
+							"Black",
+							"White",
+							"Magenta"
+					};
+					
 					boolean[] showText = {true};
 					int[] skinIdx = {1};
+					int[] bgIdx = {1};
 					
 					glfwSetKeyCallback(window, new GLFWKeyCallback() {
 						@Override
@@ -353,6 +366,8 @@ public class RenderContext extends Thread {
 								} else if (key == GLFW_KEY_DELETE) {
 									renderers.values().forEach(Renderer::destroy);
 									renderers.clear();
+								} else if (key == GLFW_KEY_G) {
+									bgIdx[0] = (bgIdx[0]+1)%bgs.length;
 								}
 							}
 						}
@@ -371,7 +386,7 @@ public class RenderContext extends Thread {
 					
 					while (run) {
 						glfwPollEvents();
-						drawContinuous(skins.get(skinKeys[skinIdx[0]]), skinKeys[skinIdx[0]], conf, pattern, fontBuffer, showText[0]);
+						drawContinuous(skins.get(skinKeys[skinIdx[0]]), skinKeys[skinIdx[0]], bgs[bgIdx[0]], conf, pattern, fontBuffer, showText[0]);
 						glfwSwapBuffers(window);
 					}
 				} else {
@@ -410,7 +425,7 @@ public class RenderContext extends Thread {
 	}
 
 	// TODO the debug interface should be moved to a separate class
-	private void drawContinuous(BufferedImage skin, String skinName, RenderConfiguration conf, ByteBuffer pattern, ByteBuffer fontBuf, boolean showText) throws Exception {
+	private void drawContinuous(BufferedImage skin, String skinName, String bg, RenderConfiguration conf, ByteBuffer pattern, ByteBuffer fontBuf, boolean showText) throws Exception {
 		glColor3f(1, 1, 1);
 		int h = CANVAS_WIDTH;
 		if (conf.isFull()) {
@@ -418,18 +433,41 @@ public class RenderContext extends Thread {
 		}
 		
 		glFrontFace(GL_CCW);
-		glClearColor(0.4f, 0.4f, 0.4f, 1);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glPolygonStipple(pattern);
-		glEnable(GL_POLYGON_STIPPLE);
-		glColor3f(0.6f, 0.6f, 0.6f);
-		glBegin(GL_QUADS); {
-			glVertex2f(0, conf.isFull() ? 0 : CANVAS_HEIGHT-CANVAS_WIDTH);
-			glVertex2f(CANVAS_WIDTH, conf.isFull() ? 0 : CANVAS_HEIGHT-CANVAS_WIDTH);
-			glVertex2f(CANVAS_WIDTH, CANVAS_HEIGHT);
-			glVertex2f(0, CANVAS_HEIGHT);
-		} glEnd();
-		glDisable(GL_POLYGON_STIPPLE);
+		if (bg.endsWith("Checkers")) {
+			float bgTone = 0;
+			float fgTone = 0;
+			if (bg.equals("Light Checkers")) {
+				bgTone = 0.8f;
+				fgTone = 1.0f;
+			} else if (bg.equals("Mid Checkers")) {
+				bgTone = 0.4f;
+				fgTone = 0.6f;
+			} else if (bg.equals("Dark Checkers")) {
+				bgTone = 0.0f;
+				fgTone = 0.2f;
+			}
+			glClearColor(bgTone, bgTone, bgTone, 1);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glPolygonStipple(pattern);
+			glEnable(GL_POLYGON_STIPPLE);
+			glColor3f(fgTone, fgTone, fgTone);
+			glBegin(GL_QUADS); {
+				glVertex2f(0, conf.isFull() ? 0 : CANVAS_HEIGHT-CANVAS_WIDTH);
+				glVertex2f(CANVAS_WIDTH, conf.isFull() ? 0 : CANVAS_HEIGHT-CANVAS_WIDTH);
+				glVertex2f(CANVAS_WIDTH, CANVAS_HEIGHT);
+				glVertex2f(0, CANVAS_HEIGHT);
+			} glEnd();
+			glDisable(GL_POLYGON_STIPPLE);
+		} else if (bg.equals("Black")) {
+			glClearColor(0, 0, 0, 1);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		} else if (bg.equals("White")) {
+			glClearColor(1, 1, 1, 1);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		} else if (bg.equals("Magenta")) {
+			glClearColor(1, 0, 1, 1);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		}
 		
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);
@@ -449,8 +487,9 @@ public class RenderContext extends Thread {
 			
 			
 			if (showText) {
-				drawText(fontBuf, false, "sKin: "+skinName, 5, color(true, isKeyPressed(GLFW_KEY_K)));
-				drawText(fontBuf, false, "Type: "+conf.getType(), 15, color(true, isKeyPressed(GLFW_KEY_T)));
+				drawText(fontBuf, false, "backGround: "+bg, 5, color(true, isKeyPressed(GLFW_KEY_G)));
+				drawText(fontBuf, false, "sKin: "+skinName, 15, color(true, isKeyPressed(GLFW_KEY_K)));
+				drawText(fontBuf, false, "Type: "+conf.getType(), 25, color(true, isKeyPressed(GLFW_KEY_T)));
 				
 				drawText(fontBuf, true, "Slim          ", 5, color(conf.isSlim(), isKeyPressed(GLFW_KEY_S)));
 				
@@ -647,6 +686,8 @@ public class RenderContext extends Thread {
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			glBindTexture(GL_TEXTURE_2D, fboTex);
+			glGenerateMipmap(GL_TEXTURE_2D);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 			
 			glMatrixMode(GL_PROJECTION);
 			glLoadIdentity();
@@ -706,19 +747,6 @@ public class RenderContext extends Thread {
 		} else {
 			return png.toByteArray();
 		}
-	}
-
-	private void drawQuad(int width, int height) {
-		glBegin(GL_QUADS); {
-			glTexCoord2f(0, height/CANVAS_HEIGHTf);
-			glVertex2f(0, 0);
-			glTexCoord2f(width/CANVAS_WIDTHf, height/CANVAS_HEIGHTf);
-			glVertex2f(width, 0);
-			glTexCoord2f(width/CANVAS_WIDTHf, 0);
-			glVertex2f(width, height);
-			glTexCoord2f(0, 0);
-			glVertex2f(0, height);
-		} glEnd();
 	}
 
 	private BufferedImage flipLimb(BufferedImage in) {
