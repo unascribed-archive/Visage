@@ -28,33 +28,24 @@ import com.surgeplay.visage.renderer.RenderContext;
 import com.surgeplay.visage.renderer.render.primitive.Plane;
 import com.surgeplay.visage.renderer.render.primitive.Stage;
 
-public class FrontRenderer extends Renderer {
+public class FlatBodyRenderer extends Renderer {
 
-	private final boolean slim;
-	private final boolean full;
-	
-	public FrontRenderer(RenderContext owner, boolean slim, boolean full) {
+	public FlatBodyRenderer(RenderContext owner) {
 		super(owner);
-		this.slim = slim;
-		this.full = full;
-	}
-	
-	public FrontRenderer(RenderContext owner) {
-		this(owner, false, false);
 	}
 
 	@Override
-	protected void initPrimitives() {
+	protected void initPrimitives(boolean slim, boolean full, boolean flip) {
 		Stage stage = new Stage();
 		if (full) {
-			stage.y = -1.5f;
+			stage.y = flip ? 1.5f : -1.5f;
 			stage.z = -9.75f;
 		} else {
-			stage.y = -0.04f;
+			stage.y = flip ? 0.04f : -0.04f;
 			stage.z = -6.25f;
 		}
 		stage.rotZ = 0;
-		stage.rotY = 0;
+		stage.rotY = flip ? 180 : 0;
 		stage.rotX = -90;
 		stage.lit = false;
 		addPrimitive(stage);

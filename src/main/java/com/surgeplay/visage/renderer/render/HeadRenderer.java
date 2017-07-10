@@ -31,12 +31,13 @@ import com.surgeplay.visage.renderer.render.primitive.Stage;
 
 
 public class HeadRenderer extends Renderer {
+	
 	public HeadRenderer(RenderContext owner) {
 		super(owner);
 	}
 
 	@Override
-	protected void initPrimitives() {
+	protected void initPrimitives(boolean slim, boolean full, boolean flip) {
 		float tilt = -20;
 		float angle = -35;
 		
@@ -56,12 +57,18 @@ public class HeadRenderer extends Renderer {
 		Cube head = new Cube();
 		head.y = -0.025f;
 		head.z = -0.025f;
+		if (flip) {
+			head.rotZ = 180f;
+		}
 		head.texture = TextureType.HEAD;
 		head.alphaMode = AlphaMode.NONE;
 		stage.members.add(head);
 		Cube helm = new Cube();
 		helm.scaleX = helm.scaleY = helm.scaleZ = 1.05f;
 		helm.z = -0f;
+		if (flip) {
+			helm.rotZ = 180f;
+		}
 		helm.texture = TextureType.HEAD2;
 		helm.alphaMode = AlphaMode.MASK;
 		stage.members.add(helm);

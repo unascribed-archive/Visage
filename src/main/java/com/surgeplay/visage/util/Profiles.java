@@ -39,12 +39,16 @@ import com.google.common.collect.Maps;
 
 public class Profiles {
 	public static boolean isSlim(GameProfile profile) throws IOException {
-		System.out.println(profile);
 		if (profile.getTextures().containsKey(TextureType.SKIN)) {
 			Texture t = profile.getTexture(TextureType.SKIN);
 			return t.getModel() == TextureModel.SLIM;
 		}
 		return UUIDs.isAlex(profile.getId());
+	}
+	
+	public static boolean isFlipped(GameProfile profile) {
+		return "Dinnerbone".equals(profile.getName()) ||
+				"Grumm".equals(profile.getName());
 	}
 
 	public static GameProfile readGameProfile(DataInputStream data) throws IOException {
@@ -82,4 +86,5 @@ public class Profiles {
 			data.writeUTF(en.getValue().getURL());
 		}
 	}
+	
 }

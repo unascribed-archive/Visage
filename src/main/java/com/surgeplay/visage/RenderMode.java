@@ -24,52 +24,24 @@
 
 package com.surgeplay.visage;
 
-import java.util.logging.Level;
-
-import com.surgeplay.visage.renderer.RenderContext;
-import com.surgeplay.visage.renderer.render.BustRenderer;
-import com.surgeplay.visage.renderer.render.BustSlimRenderer;
-import com.surgeplay.visage.renderer.render.FaceRenderer;
-import com.surgeplay.visage.renderer.render.FrontFullRenderer;
-import com.surgeplay.visage.renderer.render.FrontRenderer;
-import com.surgeplay.visage.renderer.render.FrontFullSlimRenderer;
-import com.surgeplay.visage.renderer.render.FrontSlimRenderer;
-import com.surgeplay.visage.renderer.render.FullRenderer;
-import com.surgeplay.visage.renderer.render.FullSlimRenderer;
-import com.surgeplay.visage.renderer.render.HeadRenderer;
-import com.surgeplay.visage.renderer.render.Renderer;
-
 public enum RenderMode {
-	FACE(FaceRenderer.class),
-	HEAD(HeadRenderer.class),
 	
-	BUST(BustRenderer.class),
-	BUST_SLIM(BustSlimRenderer.class),
+	FACE,
+	FRONT,
+	FRONTFULL,
 	
-	FULL(FullRenderer.class),
-	FULL_SLIM(FullSlimRenderer.class),
+	HEAD,
+	BUST,
+	FULL,
 	
-	FRONT(FrontRenderer.class),
-	FRONT_SLIM(FrontSlimRenderer.class),
-	
-	FRONTFULL(FrontFullRenderer.class),
-	FRONTFULL_SLIM(FrontFullSlimRenderer.class),
-	
-	SKIN(null),
+	SKIN,
 	;
 	
-	private final Class<? extends Renderer> renderer;
-	
-	private RenderMode(Class<? extends Renderer> renderer) {
-		this.renderer = renderer;
-	}
 	
 	public boolean isTall() {
 		switch (this) {
 			case FULL: return true;
-			case FULL_SLIM: return true;
 			case FRONTFULL: return true;
-			case FRONTFULL_SLIM: return true;
 			default: return false;
 		}
 	}
@@ -78,30 +50,8 @@ public enum RenderMode {
 		switch (this) {
 			case HEAD: return true;
 			case BUST: return true;
-			case BUST_SLIM: return true;
 			case FULL: return true;
-			case FULL_SLIM: return true;
 			default: return false;
-		}
-	}
-	
-	public RenderMode slim() {
-		switch (this) {
-			case BUST: return BUST_SLIM;
-			case FULL: return FULL_SLIM;
-			case FRONT: return FRONT_SLIM;
-			case FRONTFULL: return FRONTFULL_SLIM;
-			default: return this;
-		}
-	}
-	
-	public Renderer newRenderer(RenderContext ctx) {
-		if (renderer == null) return null;
-		try {
-			return renderer.getConstructor(RenderContext.class).newInstance(ctx);
-		} catch (Exception e) {
-			Visage.log.log(Level.SEVERE, "Could not instanciate Renderer for "+this, e);
-			return null;
 		}
 	}
 }

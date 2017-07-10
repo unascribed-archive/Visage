@@ -32,6 +32,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
@@ -52,6 +53,7 @@ import org.lwjgl.stb.STBEasyFont;
 import com.github.steveice10.mc.auth.data.GameProfile;
 
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.common.io.ByteStreams;
 import com.rabbitmq.client.AMQP.BasicProperties;
@@ -59,6 +61,7 @@ import com.rabbitmq.client.QueueingConsumer.Delivery;
 import com.sixlegs.png.PngImage;
 import com.surgeplay.visage.RenderMode;
 import com.surgeplay.visage.Visage;
+import com.surgeplay.visage.renderer.RenderConfiguration.Type;
 import com.surgeplay.visage.renderer.render.Renderer;
 import com.surgeplay.visage.renderer.util.Textures;
 import com.surgeplay.visage.util.Profiles;
@@ -165,18 +168,13 @@ public class RenderContext extends Thread {
 	
 	private static int nextId = 1;
 	public VisageRenderer parent;
-	private Renderer[] renderers;
+	private Map<RenderConfiguration, Renderer> renderers = Maps.newHashMap();
 	private boolean run = true;
 	private BlockingDeque<Delivery> toProcess = new LinkedBlockingDeque<>();
 	
 	public RenderContext(VisageRenderer parent) {
 		super("Render thread #"+(nextId++));
 		this.parent = parent;
-		RenderMode[] modes = RenderMode.values();
-		renderers = new Renderer[modes.length];
-		for (int i = 0; i < modes.length; i++) {
-			renderers[i] = modes[i].newRenderer(this);
-		}
 	}
 	
 	@Override
@@ -202,7 +200,7 @@ public class RenderContext extends Thread {
 				glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 			}
 			
-			long window = glfwCreateWindow(CANVAS_WIDTH, CANVAS_HEIGHT, "Visage ["+getName()+"]", NULL, NULL);
+			long window = glfwCreateWindow(CANVAS_WIDTH, CANVAS_HEIGHT, "Visage v"+Visage.VERSION+" ["+getName()+"]", NULL, NULL);
 			if (window == NULL) {
 				checkGLFWError();
 				throw new RuntimeException("Failed to create window");
@@ -318,40 +316,43 @@ public class RenderContext extends Thread {
 			Visage.log.info("Waiting for jobs");
 			try {
 				if (parent.config.getBoolean("continuous")) {
-					BufferedImage alex = ImageIO.read(ClassLoader.getSystemResource("alex.png"));
-					BufferedImage steve = ImageIO.read(ClassLoader.getSystemResource("steve.png"));
-					BufferedImage test = ImageIO.read(ClassLoader.getSystemResource("test_skin.png"));
+					
+					Map<String, BufferedImage> skins = ImmutableMap.<String, BufferedImage>builder()
+							.put("X-Alex", ImageIO.read(ClassLoader.getSystemResource("alex.png")))
+							.put("X-Steve", ImageIO.read(ClassLoader.getSystemResource("steve.png")))
+							.put("X-Test", ImageIO.read(ClassLoader.getSystemResource("test_skin.png")))
+							.put("Falkreon", ImageIO.read(URI.create("https://visage.surgeplay.com/skin/Falkreon").toURL()))
+							.put("unascribed", ImageIO.read(URI.create("https://visage.surgeplay.com/skin/unascribed").toURL()))
+							.put("Dinnerbone", ImageIO.read(URI.create("https://visage.surgeplay.com/skin/Dinnerbone").toURL()))
+							.build();
 					
 					ByteBuffer fontBuffer = BufferUtils.createByteBuffer(276480);
 					
-					RenderMode[] modes = {RenderMode.FACE, RenderMode.FRONT, RenderMode.FRONTFULL, RenderMode.HEAD, RenderMode.BUST, RenderMode.FULL};
-					BufferedImage[] skins = {alex, steve, test, test};
-					String[] names = {"alex", "steve", "test (slim)", "test"};
+					RenderConfiguration conf = new RenderConfiguration(Type.BODY, false, true, false);
+					String[] skinKeys = skins.keySet().toArray(new String[skins.size()]);
 					
-					int[] skin = {0};
-					int[] mode = {5};
 					boolean[] showText = {true};
+					int[] skinIdx = {1};
 					
 					glfwSetKeyCallback(window, new GLFWKeyCallback() {
 						@Override
 						public void invoke(long window, int key, int scancode, int action, int mods) {
 							if (action == GLFW_PRESS) {
-								if (key == GLFW_KEY_RIGHT) {
-									mode[0] = (mode[0]+1)%modes.length;
-								} else if (key == GLFW_KEY_LEFT) {
-									mode[0] = mode[0]-1;
-									if (mode[0] < 0) {
-										mode[0] = modes.length+mode[0];
-									}
-								} else if (key == GLFW_KEY_UP) {
-									skin[0] = (skin[0]+1)%skins.length;
-								} else if (key == GLFW_KEY_DOWN) {
-									skin[0] = skin[0]-1;
-									if (skin[0] < 0) {
-										skin[0] = skins.length+skin[0];
-									}
+								if (key == GLFW_KEY_K) {
+									skinIdx[0] = (skinIdx[0]+1)%skins.size();
+								} else if (key == GLFW_KEY_T) {
+									conf.setType(Type.values()[(conf.getType().ordinal()+1)%Type.values().length]);
+								} else if (key == GLFW_KEY_F) {
+									conf.setFull(!conf.isFull());
+								} else if (key == GLFW_KEY_P) {
+									conf.setFlipped(!conf.isFlipped());
+								} else if (key == GLFW_KEY_S) {
+									conf.setSlim(!conf.isSlim());
 								} else if (key == GLFW_KEY_SPACE) {
 									showText[0] = !showText[0];
+								} else if (key == GLFW_KEY_DELETE) {
+									renderers.values().forEach(Renderer::destroy);
+									renderers.clear();
 								}
 							}
 						}
@@ -368,17 +369,9 @@ public class RenderContext extends Thread {
 							0, 0, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1, 0, 0, });
 					pattern.flip();
 					
-					while (!glfwWindowShouldClose(window)) {
+					while (run) {
 						glfwPollEvents();
-						
-						String modeText;
-						if (showText[0]) {
-							modeText = modes[mode[0]].name().toLowerCase()+" - "+names[skin[0]];
-						} else {
-							modeText = null;
-						}
-						drawContinuous(skins[skin[0]], pattern, fontBuffer, (skin[0] % 2 == 0) ? modes[mode[0]].slim() : modes[mode[0]], modeText);
-						
+						drawContinuous(skins.get(skinKeys[skinIdx[0]]), skinKeys[skinIdx[0]], conf, pattern, fontBuffer, showText[0]);
 						glfwSwapBuffers(window);
 					}
 				} else {
@@ -406,11 +399,8 @@ public class RenderContext extends Thread {
 					}
 				}
 				glfwDestroyWindow(window);
-				for (Renderer r : renderers) {
-					if (r != null) {
-						r.destroy();
-					}
-				}
+				renderers.values().forEach(Renderer::destroy);
+				renderers.clear();
 			} catch (Exception e) {
 				Visage.log.log(Level.SEVERE, "A fatal error has occurred in the render thread run loop.", e);
 			}
@@ -419,10 +409,11 @@ public class RenderContext extends Thread {
 		}
 	}
 
-	private void drawContinuous(BufferedImage skin, ByteBuffer pattern, ByteBuffer fontBuf, RenderMode mode, String modeName) throws Exception {
+	// TODO the debug interface should be moved to a separate class
+	private void drawContinuous(BufferedImage skin, String skinName, RenderConfiguration conf, ByteBuffer pattern, ByteBuffer fontBuf, boolean showText) throws Exception {
 		glColor3f(1, 1, 1);
 		int h = CANVAS_WIDTH;
-		if (mode .isTall()) {
+		if (conf.isFull()) {
 			h = CANVAS_HEIGHT;
 		}
 		
@@ -433,8 +424,8 @@ public class RenderContext extends Thread {
 		glEnable(GL_POLYGON_STIPPLE);
 		glColor3f(0.6f, 0.6f, 0.6f);
 		glBegin(GL_QUADS); {
-			glVertex2f(0, mode.isTall() ? 0 : CANVAS_HEIGHT-CANVAS_WIDTH);
-			glVertex2f(CANVAS_WIDTH, mode.isTall() ? 0 : CANVAS_HEIGHT-CANVAS_WIDTH);
+			glVertex2f(0, conf.isFull() ? 0 : CANVAS_HEIGHT-CANVAS_WIDTH);
+			glVertex2f(CANVAS_WIDTH, conf.isFull() ? 0 : CANVAS_HEIGHT-CANVAS_WIDTH);
 			glVertex2f(CANVAS_WIDTH, CANVAS_HEIGHT);
 			glVertex2f(0, CANVAS_HEIGHT);
 		} glEnd();
@@ -445,7 +436,7 @@ public class RenderContext extends Thread {
 		glColor3f(1, 1, 1);
 		
 		glPushMatrix();
-			draw(mode, CANVAS_WIDTH, h, new GameProfile(new UUID(0L, 0L), "continuous_test"), skin, Collections.emptyMap());
+			draw(conf, CANVAS_WIDTH, h, new GameProfile(new UUID(0L, 0L), "continuous_test"), skin, Collections.emptyMap());
 		glPopMatrix();
 		
 		glPushMatrix();
@@ -456,42 +447,92 @@ public class RenderContext extends Thread {
 			glDisable(GL_CULL_FACE);
 			glDisable(GL_TEXTURE_2D);
 			
-			glScalef(2, 2, 1);
 			
-			if (modeName != null) {
-				fontBuf.rewind();
-				int amt = STBEasyFont.stb_easy_font_print(5, 5, "visage v"+Visage.VERSION+" - "+modeName+"\n< - prev mode | > - next mode\n^ - prev skin | v - next skin\nspace - hide/show text", null, fontBuf);
+			if (showText) {
+				drawText(fontBuf, false, "sKin: "+skinName, 5, color(true, isKeyPressed(GLFW_KEY_K)));
+				drawText(fontBuf, false, "Type: "+conf.getType(), 15, color(true, isKeyPressed(GLFW_KEY_T)));
 				
-				glColor3f(1, 1, 1);
-				glBegin(GL_QUADS);
-				for (int x = -1; x <= 1; x++) {
-					for (int y = -1; y <= 1; y++) {
-						fontBuf.rewind();
-						if (x == 0 && y == 0) {
-							continue;
-						}
-						for (int i = 0; i < amt*4; i++) {
-							glVertex2f(fontBuf.getFloat()+x, fontBuf.getFloat()+y);
-							fontBuf.position(fontBuf.position()+8);
-						}
-					}
-				}
-				glEnd();
+				drawText(fontBuf, true, "Slim          ", 5, color(conf.isSlim(), isKeyPressed(GLFW_KEY_S)));
 				
-				glTranslatef(0, 0, 1);
-				glColor3f(0, 0, 0);
-				fontBuf.rewind();
-				glBegin(GL_QUADS);
-				for (int i = 0; i < amt*4; i++) {
-					glVertex2f(fontBuf.getFloat(), fontBuf.getFloat());
-					fontBuf.position(fontBuf.position()+8);
-				}
-				glEnd();
+				drawText(fontBuf, true, "fliP     ", 5, color(conf.isFlipped(), isKeyPressed(GLFW_KEY_P)));
+				
+				drawText(fontBuf, true, "Full", 5, color(conf.isFull(), isKeyPressed(GLFW_KEY_F)));
+				
+				drawText(fontBuf, false, "DELETE to clear cache", (CANVAS_HEIGHT/2)-15, color(true, isKeyPressed(GLFW_KEY_DELETE)));
+				drawText(fontBuf, true, "SPACE to hide text", (CANVAS_HEIGHT/2)-15, color(true, isKeyPressed(GLFW_KEY_SPACE)));
 			}
 			
 		glPopMatrix();
 	}
 	
+	private boolean isKeyPressed(int key) {
+		return glfwGetKey(glfwGetCurrentContext(), key) == GLFW_PRESS;
+	}
+
+	private int color(boolean lit, boolean colored) {
+		int a;
+		if (lit) {
+			a = 0xFF000000;
+		} else {
+			a = 0x55000000;
+		}
+		return (colored ? 0x00FFFF : 0xFFFFFF) | a;
+	}
+
+	private void drawText(ByteBuffer fontBuf, boolean alignRight, String text, int y, int color) {
+		fontBuf.rewind();
+		
+		int amt = STBEasyFont.stb_easy_font_print(0, 0, text, null, fontBuf);
+		
+		int x = alignRight ? ((CANVAS_WIDTH/2)-STBEasyFont.stb_easy_font_width(text))-5 : 5;
+		
+		float r = ((color >> 16)&0xFF)/255f;
+		float g = ((color >>  8)&0xFF)/255f;
+		float b = ((color      )&0xFF)/255f;
+		float a = ((color >> 24)&0xFF)/255f;
+		
+		float darkR = r*0.25f;
+		float darkG = g*0.25f;
+		float darkB = b*0.25f;
+		
+		glPushMatrix(); glPushAttrib(GL_ALL_ATTRIB_BITS); {
+			glScalef(2, 2, 1);
+			glTranslatef(x, y, 1);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glEnable(GL_DEPTH_TEST);
+			glDepthFunc(GL_NOTEQUAL);
+			
+			glColor4f(darkR, darkG, darkB, a);
+			glBegin(GL_QUADS);
+			for (int xOfs = -1; xOfs <= 1; xOfs++) {
+				for (int yOfs = -1; yOfs <= 1; yOfs++) {
+					fontBuf.rewind();
+					if (xOfs == 0 && yOfs == 0) {
+						continue;
+					}
+					for (int i = 0; i < amt*4; i++) {
+						glVertex2f(fontBuf.getFloat()+xOfs, fontBuf.getFloat()+yOfs);
+						fontBuf.position(fontBuf.position()+8);
+					}
+				}
+			}
+			glEnd();
+			
+			glColorMask(true, true, true, false);
+			
+			glTranslatef(0, 0, 1);
+			glColor4f(r, g, b, a);
+			fontBuf.rewind();
+			glBegin(GL_QUADS); {
+				for (int i = 0; i < amt*4; i++) {
+					glVertex2f(fontBuf.getFloat(), fontBuf.getFloat());
+					fontBuf.position(fontBuf.position()+8);
+				}
+			} glEnd();
+		} glPopAttrib(); glPopMatrix();
+	}
+
 	private void setup2D(int width, int height) {
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
@@ -528,8 +569,11 @@ public class RenderContext extends Thread {
 		data.readFully(skinData);
 		BufferedImage skin = new PngImage().read(new ByteArrayInputStream(skinData), false);
 		Visage.log.info("Received a job to render a "+width+"x"+height+" "+mode.name().toLowerCase()+" for "+(profile == null ? "null" : profile.getName()));
+		
+		RenderConfiguration conf = new RenderConfiguration(Type.fromMode(mode), Profiles.isSlim(profile), mode.isTall(), Profiles.isFlipped(profile));
+		
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		byte[] pngBys = draw(mode, width, height, profile, skin, params);
+		byte[] pngBys = draw(conf, width, height, profile, skin, params);
 		if (Visage.trace) Visage.log.finest("Got png bytes");
 		parent.channel.basicPublish("", props.getReplyTo(), replyProps, buildResponse(0, pngBys));
 		if (Visage.trace) Visage.log.finest("Published response");
@@ -548,10 +592,7 @@ public class RenderContext extends Thread {
 		return resp;
 	}
 
-	public byte[] draw(RenderMode mode, int width, int height, GameProfile profile, BufferedImage skin, Map<String, String[]> params) throws Exception {
-		if (Profiles.isSlim(profile)) {
-			mode = mode.slim();
-		}
+	public byte[] draw(RenderConfiguration conf, int width, int height, GameProfile profile, BufferedImage skin, Map<String, String[]> params) throws Exception {
 		//BufferedImage cape;
 		BufferedImage out;
 		if (skin.getHeight() == 32) {
@@ -581,74 +622,65 @@ public class RenderContext extends Thread {
 			skin.setRGB(32, 0, 32, 16, new int[32*64], 0, 32);
 		}
 		if (Visage.trace) Visage.log.finest("Got skin");
-		if (Visage.trace) Visage.log.finest(mode.name());
-		switch (mode) {
-			case SKIN:
-				out = skin;
-				break;
-			default: {
-				Renderer renderer = renderers[mode.ordinal()];
-				if (!renderer.isInitialized()) {
-					if (Visage.trace) Visage.log.finest("Initialized renderer");
-					renderer.init();
-				}
-				try {
-					if (Visage.trace) Visage.log.finest("Uploading");
-					renderer.setSkin(skin);
-					if (Visage.trace) Visage.log.finest("Rendering");
-					
-					glUseProgram(0);
-					glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-					glClearColor(0, 0, 0, 0);
-					glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-					renderer.render(width*SUPERSAMPLING, height*SUPERSAMPLING);
-					
-					glBindFramebuffer(GL_FRAMEBUFFER, 0);
-					
-					glDisable(GL_LIGHTING);
-					glColor3f(1, 1, 1);
-					glDisable(GL_ALPHA_TEST);
-					glDisable(GL_CULL_FACE);
-					glEnable(GL_BLEND);
-					glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-					glBindTexture(GL_TEXTURE_2D, fboTex);
-					
-					glMatrixMode(GL_PROJECTION);
-					glLoadIdentity();
-					glOrtho(-1, 1, -1, 1, -10, 10);
-					glViewport(0, 0, width, height);
-					
-					glMatrixMode(GL_MODELVIEW);
-					glLoadIdentity();
-					
-					glViewport(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-					
-					float s = 1f;
-					
-					glBegin(GL_QUADS); {
-						glTexCoord2f(0, 0);
-						glVertex2f(-s, -s);
-						glTexCoord2f(1, 0);
-						glVertex2f(s, -s);
-						glTexCoord2f(1, 1);
-						glVertex2f(s, s);
-						glTexCoord2f(0, 1);
-						glVertex2f(-s, s);
-					} glEnd();
-					glUseProgram(0);
-					
-					if (!parent.config.getBoolean("continuous")) {
-						if (Visage.trace) Visage.log.finest("Rendered - reading pixels");
-						out = renderer.readPixels(width, height);
-					} else {
-						out = null;
-					}
-				} finally {
-					renderer.finish();
-					if (Visage.trace) Visage.log.finest("Finished renderer");
-				}
-				break;
+		if (Visage.trace) Visage.log.finest(conf.toString());
+		if (!renderers.containsKey(conf)) {
+			renderers.put(conf.copy().lock(), conf.createRenderer(this));
+		}
+		Renderer renderer = renderers.get(conf);
+		try {
+			if (Visage.trace) Visage.log.finest("Uploading");
+			renderer.setSkin(skin);
+			if (Visage.trace) Visage.log.finest("Rendering");
+			
+			glUseProgram(0);
+			glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+			glClearColor(0, 0, 0, 0);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			renderer.render(width*SUPERSAMPLING, height*SUPERSAMPLING);
+			
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			
+			glDisable(GL_LIGHTING);
+			glColor3f(1, 1, 1);
+			glDisable(GL_ALPHA_TEST);
+			glDisable(GL_CULL_FACE);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glBindTexture(GL_TEXTURE_2D, fboTex);
+			
+			glMatrixMode(GL_PROJECTION);
+			glLoadIdentity();
+			glOrtho(-1, 1, -1, 1, -10, 10);
+			glViewport(0, 0, width, height);
+			
+			glMatrixMode(GL_MODELVIEW);
+			glLoadIdentity();
+			
+			glViewport(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+			
+			float s = 1f;
+			
+			glBegin(GL_QUADS); {
+				glTexCoord2f(0, 0);
+				glVertex2f(-s, -s);
+				glTexCoord2f(1, 0);
+				glVertex2f(s, -s);
+				glTexCoord2f(1, 1);
+				glVertex2f(s, s);
+				glTexCoord2f(0, 1);
+				glVertex2f(-s, s);
+			} glEnd();
+			glUseProgram(0);
+			
+			if (!parent.config.getBoolean("continuous")) {
+				if (Visage.trace) Visage.log.finest("Rendered - reading pixels");
+				out = renderer.readPixels(width, height);
+			} else {
+				out = null;
 			}
+		} finally {
+			renderer.finish();
+			if (Visage.trace) Visage.log.finest("Finished renderer");
 		}
 		if (out == null) return null;
 		ByteArrayOutputStream png = new ByteArrayOutputStream();

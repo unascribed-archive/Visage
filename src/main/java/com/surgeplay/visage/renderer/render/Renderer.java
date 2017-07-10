@@ -29,6 +29,8 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.lwjgl.BufferUtils;
+
+import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import com.surgeplay.visage.Visage;
 import com.surgeplay.visage.renderer.RenderContext;
@@ -79,9 +81,15 @@ public abstract class Renderer {
 		initialized = false;
 	}
 	
-	public void init() {
-		if (Visage.debug) Visage.log.finer("["+name+"] Initializing primitives");
-		initPrimitives();
+	public void init(boolean slim, boolean full, boolean flip) {
+		if (Visage.debug) {
+			List<String> modes = Lists.newArrayList();
+			if (slim) modes.add("slim");
+			if (full) modes.add("full");
+			if (flip) modes.add("flip");
+			Visage.log.finer("["+name+"] Initializing primitives"+(modes.isEmpty() ? "" : " ("+Joiner.on(", ").join(modes)+")"));
+		}
+		initPrimitives(slim, full, flip);
 		initialized = true;
 	}
 	
@@ -89,7 +97,7 @@ public abstract class Renderer {
 		return initialized;
 	}
 	
-	protected abstract void initPrimitives();
+	protected abstract void initPrimitives(boolean slim, boolean full, boolean flip);
 	protected void initGL(float width, float height) {
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();

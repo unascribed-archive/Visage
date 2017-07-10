@@ -35,12 +35,12 @@ public class FaceRenderer extends Renderer {
 	}
 
 	@Override
-	protected void initPrimitives() {
+	protected void initPrimitives(boolean slim, boolean full, boolean flip) {
 		Stage stage = new Stage();
 		stage.y = 0;
 		stage.z = -2.5f;
 		stage.rotZ = 0;
-		stage.rotY = 0;
+		stage.rotY = flip ? 180 : 0;
 		stage.rotX = -90;
 		stage.lit = false;
 		addPrimitive(stage);
