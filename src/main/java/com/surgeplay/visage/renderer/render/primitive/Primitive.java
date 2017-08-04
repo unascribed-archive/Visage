@@ -78,18 +78,21 @@ public abstract class Primitive {
 				if (texture == TextureType.ALL) {
 					glBindTexture(GL_TEXTURE_2D, renderer.owner.shadowTexture);
 					glUseProgram(0);
+					glEnable(GL_BLEND);
+					glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+					glDisable(GL_ALPHA_TEST);
 				} else {
 					glBindTexture(GL_TEXTURE_2D, renderer.owner.skinFboTex);
 					glUseProgram(renderer.owner.textureFilterProgram);
+					glEnable(GL_BLEND);
+					glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+					glDisable(GL_ALPHA_TEST);
 				}
 			} else {
 				if (Visage.trace) Visage.log.finest("Disabling texturing");
 				glDisable(GL_TEXTURE_2D);
 				glUseProgram(0);
 			}
-			glEnable(GL_BLEND);
-			glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-			glDisable(GL_ALPHA_TEST);
 			Errors.checkGLError();
 			
 			if (Visage.trace) Visage.log.finest("Setting VBO");
