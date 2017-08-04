@@ -154,6 +154,9 @@ public class RenderContext extends Thread {
 		try {
 			shadow = ImageIO.read(ClassLoader.getSystemResource("shadow.png"));
 			skinUnderlay = ImageIO.read(ClassLoader.getSystemResource("skin_underlay.png"));
+			
+			shadow.coerceData(true);
+			skinUnderlay.coerceData(true);
 		} catch (IOException e) {
 			throw new InternalError(e);
 		}
@@ -823,6 +826,10 @@ public class RenderContext extends Thread {
 			
 			if (!parent.config.getBoolean("continuous")) {
 				if (Visage.trace) Visage.log.finest("Rendered - reading pixels");
+				glBindFramebuffer(GL_DRAW_FRAMEBUFFER, swapFbo);
+				glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+				glBlitFramebuffer(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+				
 				glBindFramebuffer(GL_FRAMEBUFFER, 0);
 				
 				glDisable(GL_LIGHTING);
@@ -841,10 +848,6 @@ public class RenderContext extends Thread {
 				glLoadIdentity();
 				
 				glViewport(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-				glBindFramebuffer(GL_DRAW_FRAMEBUFFER, swapFbo);
-				glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
-				glBlitFramebuffer(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-				glBindFramebuffer(GL_FRAMEBUFFER, 0);
 				glBindTexture(GL_TEXTURE_2D, swapFboTex);
 				drawQuad(0, 0, 1, 1);
 				
