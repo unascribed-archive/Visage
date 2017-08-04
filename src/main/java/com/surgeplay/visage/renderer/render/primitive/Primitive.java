@@ -26,9 +26,9 @@ package com.surgeplay.visage.renderer.render.primitive;
 
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL15.*;
+import static org.lwjgl.opengl.GL20.*;
 
 import com.surgeplay.visage.Visage;
-import com.surgeplay.visage.renderer.render.AlphaMode;
 import com.surgeplay.visage.renderer.render.Renderer;
 import com.surgeplay.visage.renderer.render.TextureType;
 import com.surgeplay.visage.renderer.util.Errors;
@@ -44,17 +44,13 @@ public abstract class Primitive {
 	public boolean textured = true;
 	public TextureType texture = TextureType.NONE;
 	
-	public AlphaMode alphaMode = AlphaMode.FULL;
 	protected boolean inStage = true;
 	
 	public boolean depthMask = true;
 	
-	public int renderPass = 1;
-	
 	public abstract void render(Renderer renderer);
 	
 	protected void doRender(Renderer renderer, int vbo, int tcbo, float[] vertices) {
-		if (renderer.owner.renderPass != renderPass) return;
 		glPushMatrix();
 			glDepthMask(depthMask);
 			if (Visage.trace) Visage.log.finest("Rendering "+getClass().getSimpleName());
@@ -81,36 +77,19 @@ public abstract class Primitive {
 				glEnable(GL_TEXTURE_2D);
 				if (texture == TextureType.ALL) {
 					glBindTexture(GL_TEXTURE_2D, renderer.owner.shadowTexture);
+					glUseProgram(0);
 				} else {
 					glBindTexture(GL_TEXTURE_2D, renderer.owner.skinFboTex);
+					glUseProgram(renderer.owner.textureFilterProgram);
 				}
 			} else {
 				if (Visage.trace) Visage.log.finest("Disabling texturing");
 				glDisable(GL_TEXTURE_2D);
+				glUseProgram(0);
 			}
-			switch (alphaMode) {
-				case FULL:
-					if (Visage.trace) Visage.log.finest("Full alpha - Enabling SRCA/1-SRCA blend, disabling alpha test");
-					glEnable(GL_BLEND);
-					glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-					glDisable(GL_ALPHA_TEST);
-					break;
-				case MASK:
-					if (Visage.trace) Visage.log.finest("Mask alpha - Enabling ONE/ZERO blend and alpha test");
-					glEnable(GL_ALPHA_TEST);
-					glAlphaFunc(GL_GREATER, 0.15f);
-					glEnable(GL_BLEND);
-					glBlendFunc(GL_ONE, GL_ZERO);
-					break;
-				case NONE:
-					if (Visage.trace) Visage.log.finest("No alpha - Enabling ONE/ZERO blend, disabling alpha test");
-					glEnable(GL_BLEND);
-					glBlendFunc(GL_ONE, GL_ZERO);
-					glDisable(GL_ALPHA_TEST);
-					break;
-				default:
-					break;
-			}
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+			glDisable(GL_ALPHA_TEST);
 			Errors.checkGLError();
 			
 			if (Visage.trace) Visage.log.finest("Setting VBO");

@@ -61,7 +61,6 @@ public class HeadRenderer extends Renderer {
 			head.rotZ = 180f;
 		}
 		head.texture = TextureType.HEAD;
-		head.alphaMode = AlphaMode.NONE;
 		stage.members.add(head);
 		Cube helm = new Cube();
 		helm.scaleX = helm.scaleY = helm.scaleZ = 1.05f;
@@ -69,9 +68,7 @@ public class HeadRenderer extends Renderer {
 			helm.rotZ = 180f;
 		}
 		helm.texture = TextureType.HEAD2;
-		helm.alphaMode = AlphaMode.FULL;
 		helm.depthMask = false;
-		helm.renderPass = 2;
 		stage.members.add(helm);
 	}
 }

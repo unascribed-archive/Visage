@@ -55,7 +55,6 @@ public class BodyRenderer extends Renderer {
 			shadow.scaleZ = flip ? 1.85f : 0.85f;
 			shadow.texture = TextureType.ALL;
 			shadow.lit = false;
-			shadow.alphaMode = AlphaMode.FULL;
 			group.members.add(shadow);
 		}
 		
@@ -68,14 +67,11 @@ public class BodyRenderer extends Renderer {
 		
 		Cube head = new Cube();
 		head.texture = TextureType.HEAD;
-		head.alphaMode = AlphaMode.NONE;
 		
 		Cube head2 = new Cube();
 		head2.scaleX = head2.scaleY = head2.scaleZ = 1.05f;
 		head2.texture = TextureType.HEAD2;
-		head2.alphaMode = AlphaMode.FULL;
 		head2.depthMask = false;
-		head2.renderPass = 2;
 		
 		
 		
@@ -84,7 +80,6 @@ public class BodyRenderer extends Renderer {
 		body.scaleY = 1.5f;
 		body.scaleZ = 0.5f;
 		body.texture = TextureType.BODY;
-		body.alphaMode = AlphaMode.NONE;
 		
 		Cube body2 = new Cube();
 		body2.y = 2.5f;
@@ -92,9 +87,7 @@ public class BodyRenderer extends Renderer {
 		body2.scaleZ = 0.55f;
 		body2.scaleX = 1.05f;
 		body2.texture = TextureType.BODY2;
-		body2.alphaMode = AlphaMode.FULL;
 		body2.depthMask = false;
-		body2.renderPass = 2;
 		
 
 		
@@ -108,7 +101,6 @@ public class BodyRenderer extends Renderer {
 		larm.anchorY = -larm.scaleY;
 		larm.rotZ = -10f;
 		larm.texture = slim ? TextureType.LARM_SLIM : TextureType.LARM;
-		larm.alphaMode = AlphaMode.NONE;
 		
 		Cube larm2 = new Cube();
 		larm2.x = slim ? 1.375f : 1.5f;
@@ -120,9 +112,7 @@ public class BodyRenderer extends Renderer {
 		larm2.anchorY = -larm2.scaleY;
 		larm2.rotZ = -10f;
 		larm2.texture = slim ? TextureType.LARM2_SLIM : TextureType.LARM2;
-		larm2.alphaMode = AlphaMode.FULL;
 		larm2.depthMask = false;
-		larm2.renderPass = 2;
 		
 		
 		Cube rarm = new Cube();
@@ -135,7 +125,6 @@ public class BodyRenderer extends Renderer {
 		rarm.anchorY = -rarm.scaleY;
 		rarm.rotZ = 10f;
 		rarm.texture = slim ? TextureType.RARM_SLIM : TextureType.RARM;
-		rarm.alphaMode = AlphaMode.NONE;
 		
 		Cube rarm2 = new Cube();
 		rarm2.x = slim ? -1.375f : -1.5f;
@@ -147,9 +136,7 @@ public class BodyRenderer extends Renderer {
 		rarm2.anchorY = -rarm2.scaleY;
 		rarm2.rotZ = 10f;
 		rarm2.texture = slim ? TextureType.RARM2_SLIM : TextureType.RARM2;
-		rarm2.alphaMode = AlphaMode.FULL;
 		rarm2.depthMask = false;
-		rarm2.renderPass = 2;
 		
 		
 		Cube lleg = new Cube();
@@ -160,7 +147,6 @@ public class BodyRenderer extends Renderer {
 		lleg.scaleX = 0.5f;
 		lleg.anchorY = -lleg.scaleY;
 		lleg.texture = TextureType.LLEG;
-		lleg.alphaMode = AlphaMode.NONE;
 		
 		Cube lleg2 = new Cube();
 		lleg2.x = 0.5f;
@@ -170,9 +156,7 @@ public class BodyRenderer extends Renderer {
 		lleg2.scaleX = 0.55f;
 		lleg2.anchorY = -lleg2.scaleY;
 		lleg2.texture = TextureType.LLEG2;
-		lleg2.alphaMode = AlphaMode.FULL;
 		lleg2.depthMask = false;
-		lleg2.renderPass = 2;
 		
 		
 		Cube rleg = new Cube();
@@ -183,7 +167,6 @@ public class BodyRenderer extends Renderer {
 		rleg.scaleX = 0.5f;
 		rleg.anchorY = -rleg.scaleY;
 		rleg.texture = TextureType.RLEG;
-		rleg.alphaMode = AlphaMode.NONE;
 		
 		Cube rleg2 = new Cube();
 		rleg2.x = -0.5f;
@@ -193,9 +176,7 @@ public class BodyRenderer extends Renderer {
 		rleg2.scaleX = 0.55f;
 		rleg2.anchorY = -rleg2.scaleY;
 		rleg2.texture = TextureType.RLEG2;
-		rleg2.alphaMode = AlphaMode.FULL;
 		rleg2.depthMask = false;
-		rleg2.renderPass = 2;
 		
 		group2.members.add(head);
 		group2.members.add(body);

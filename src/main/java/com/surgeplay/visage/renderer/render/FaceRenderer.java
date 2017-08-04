@@ -49,14 +49,11 @@ public class FaceRenderer extends Renderer {
 		head.y = 0;
 		head.z = 0;
 		head.texture = TextureType.HEAD_FRONT;
-		head.alphaMode = AlphaMode.NONE;
 		stage.members.add(head);
 		Plane helm = new Plane();
 		helm.scaleX = helm.scaleY = helm.scaleZ = 1.05f;
 		helm.texture = TextureType.HEAD2_FRONT;
-		helm.alphaMode = AlphaMode.FULL;
 		helm.depthMask = false;
-		helm.renderPass = 2;
 		stage.members.add(helm);
 	}
 

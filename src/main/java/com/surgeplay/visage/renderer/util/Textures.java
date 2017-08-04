@@ -41,8 +41,16 @@ public class Textures {
 		int width = img.getWidth();
 		int height = img.getHeight();
 		if (Visage.trace) Visage.log.finest("Uploading "+width+"x"+height+" ("+(width*height)+" pixel) image");
+		
+		BufferedImage unindexed = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+		
 		int[] argb = new int[width*height];
 		img.getRGB(0, 0, width, height, argb, 0, width);
+		
+		unindexed.setRGB(0, 0, width, height, argb, 0, width);
+		unindexed.coerceData(true);
+		unindexed.getRGB(0, 0, width, height, argb, 0, width);
+		
 		IntBuffer buf = BufferUtils.createIntBuffer(width*height);
 		buf.put(argb);
 		buf.flip();

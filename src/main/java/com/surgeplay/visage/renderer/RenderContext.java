@@ -50,11 +50,12 @@ import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GLUtil;
 import org.lwjgl.stb.STBEasyFont;
 import com.github.steveice10.mc.auth.data.GameProfile;
-
+import com.google.common.base.Charsets;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.common.io.ByteStreams;
+import com.google.common.io.Resources;
 import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.QueueingConsumer.Delivery;
 import com.sixlegs.png.PngImage;
@@ -72,6 +73,7 @@ import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL12.*;
 import static org.lwjgl.opengl.GL14.*;
 import static org.lwjgl.opengl.GL15.*;
+import static org.lwjgl.opengl.GL20.*;
 import static org.lwjgl.opengl.GL30.*;
 import static org.lwjgl.system.MemoryUtil.*;
 
@@ -146,8 +148,6 @@ public class RenderContext extends Thread {
 	private static final int CANVAS_WIDTH = 512;
 	private static final int CANVAS_HEIGHT = 832;
 	
-	private static final int SKIN_SUPERSAMPLING = 16;
-	
 	private static final BufferedImage shadow;
 	private static final BufferedImage skinUnderlay;
 	static {
@@ -161,10 +161,10 @@ public class RenderContext extends Thread {
 	
 	public int cubeVbo, planeVbo, skinTexture, shadowTexture, skinUnderlayTexture;
 	
-	public int fbo, fbo2, swapFbo, swapFboTex;
+	public int fbo, swapFbo, swapFboTex;
 	public int skinFbo, skinFboTex;
 	
-	public int renderPass;
+	public int textureFilterProgram;
 	
 	private static int nextId = 1;
 	public VisageRenderer parent;
@@ -256,9 +256,9 @@ public class RenderContext extends Thread {
 			glBindTexture(GL_TEXTURE_2D, skinFboTex);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 64*SKIN_SUPERSAMPLING, 64*SKIN_SUPERSAMPLING, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 64, 64, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 			checkGLError();
 			
 			glBindTexture(GL_TEXTURE_2D, swapFboTex);
@@ -272,11 +272,9 @@ public class RenderContext extends Thread {
 			fbo = glGenFramebuffers();
 			
 			int depth = glGenRenderbuffers();
-			
 			int color = glGenRenderbuffers();
 			
 			glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-			glDrawBuffer(GL_COLOR_ATTACHMENT0);
 			
 			glBindRenderbuffer(GL_RENDERBUFFER, depth);
 			glRenderbufferStorageMultisample(GL_RENDERBUFFER, 8, GL_DEPTH_COMPONENT24, CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -286,25 +284,6 @@ public class RenderContext extends Thread {
 			
 			glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
 			glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, color);
-			checkFramebufferStatus();
-			
-			
-			fbo2 = glGenFramebuffers();
-			
-			int depth2 = glGenRenderbuffers();
-			int color2 = glGenRenderbuffers();
-			
-			glBindFramebuffer(GL_FRAMEBUFFER, fbo2);
-			glDrawBuffer(GL_COLOR_ATTACHMENT0);
-			
-			glBindRenderbuffer(GL_RENDERBUFFER, depth2);
-			glRenderbufferStorageMultisample(GL_RENDERBUFFER, 8, GL_DEPTH_COMPONENT24, CANVAS_WIDTH, CANVAS_HEIGHT);
-			
-			glBindRenderbuffer(GL_RENDERBUFFER, color2);
-			glRenderbufferStorageMultisample(GL_RENDERBUFFER, 8, GL_RGBA8, CANVAS_WIDTH, CANVAS_HEIGHT);
-			
-			glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth2);
-			glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, color2);
 			checkFramebufferStatus();
 			
 			
@@ -325,8 +304,25 @@ public class RenderContext extends Thread {
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, swapFboTex, 0);
 			checkFramebufferStatus();
 			
-			
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			
+			
+			textureFilterProgram = glCreateProgram();
+			
+			int textureFilterVS = glCreateShader(GL_VERTEX_SHADER);
+			int textureFilterFS = glCreateShader(GL_FRAGMENT_SHADER);
+			
+			glShaderSource(textureFilterVS, Resources.toString(ClassLoader.getSystemResource("texturefilter.vs"), Charsets.UTF_8));
+			glShaderSource(textureFilterFS, Resources.toString(ClassLoader.getSystemResource("texturefilter.fs"), Charsets.UTF_8));
+			
+			glCompileShader(textureFilterVS);
+			glCompileShader(textureFilterFS);
+			
+			glAttachShader(textureFilterProgram, textureFilterVS);
+			glAttachShader(textureFilterProgram, textureFilterFS);
+			
+			glLinkProgram(textureFilterProgram);
+			checkGLError();
 			
 			FloatBuffer vertexBuffer = BufferUtils.createFloatBuffer(vertices.length);
 			vertexBuffer.put(vertices);
@@ -355,7 +351,7 @@ public class RenderContext extends Thread {
 			checkGLError();
 			
 			glEnable(GL_BLEND);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 			checkGLError();
 			
 			FloatBuffer lightColor = BufferUtils.createFloatBuffer(4);
@@ -393,6 +389,7 @@ public class RenderContext extends Thread {
 							.put("Falkreon", ImageIO.read(URI.create("https://visage.surgeplay.com/skin/Falkreon").toURL()))
 							.put("unascribed", ImageIO.read(URI.create("https://visage.surgeplay.com/skin/unascribed").toURL()))
 							.put("Dinnerbone", ImageIO.read(URI.create("https://visage.surgeplay.com/skin/Dinnerbone").toURL()))
+							.put("EinCommandBlock", ImageIO.read(URI.create("https://visage.surgeplay.com/skin/EinCommandBlock").toURL()))
 							.build();
 					
 					ByteBuffer fontBuffer = BufferUtils.createByteBuffer(276480);
@@ -413,12 +410,11 @@ public class RenderContext extends Thread {
 					int[] skinIdx = {1};
 					int[] bgIdx = {1};
 					boolean[] skinOnly = {false};
-					boolean[] fbos = {true, true};
 					
 					glfwSetKeyCallback(window, new GLFWKeyCallback() {
 						@Override
 						public void invoke(long window, int key, int scancode, int action, int mods) {
-							if (action == GLFW_PRESS) {
+							if (action == GLFW_PRESS || action == GLFW_REPEAT) {
 								if (key == GLFW_KEY_K) {
 									skinIdx[0] = (skinIdx[0]+1)%skins.size();
 								} else if (key == GLFW_KEY_T) {
@@ -438,10 +434,6 @@ public class RenderContext extends Thread {
 									bgIdx[0] = (bgIdx[0]+1)%bgs.length;
 								} else if (key == GLFW_KEY_N) {
 									skinOnly[0] = !skinOnly[0];
-								} else if (key == GLFW_KEY_1) {
-									fbos[0] = !fbos[0];
-								} else if (key == GLFW_KEY_2) {
-									fbos[1] = !fbos[1];
 								}
 							}
 						}
@@ -460,7 +452,7 @@ public class RenderContext extends Thread {
 					
 					while (run) {
 						glfwPollEvents();
-						drawContinuous(skins.get(skinKeys[skinIdx[0]]), skinKeys[skinIdx[0]], bgs[bgIdx[0]], conf, pattern, fontBuffer, showText[0], skinOnly[0], fbos[0], fbos[1]);
+						drawContinuous(skins.get(skinKeys[skinIdx[0]]), skinKeys[skinIdx[0]], bgs[bgIdx[0]], conf, pattern, fontBuffer, showText[0], skinOnly[0]);
 						glfwSwapBuffers(window);
 					}
 				} else {
@@ -499,14 +491,14 @@ public class RenderContext extends Thread {
 	}
 
 	// TODO the debug interface should be moved to a separate class
-	private void drawContinuous(BufferedImage skin, String skinName, String bg, RenderConfiguration conf, ByteBuffer pattern, ByteBuffer fontBuf, boolean showText, boolean skinOnly, boolean fbo1Enabled, boolean fbo2Enabled) throws Exception {
+	private void drawContinuous(BufferedImage skin, String skinName, String bg, RenderConfiguration conf, ByteBuffer pattern, ByteBuffer fontBuf, boolean showText, boolean skinOnly) throws Exception {
 		glColor3f(1, 1, 1);
+		glUseProgram(0);
 		int h = CANVAS_WIDTH;
 		if (conf.isFull()) {
 			h = CANVAS_HEIGHT;
 		}
 		
-		glFrontFace(GL_CCW);
 		if (bg.endsWith("Checkers")) {
 			float bgTone = 0;
 			float fgTone = 0;
@@ -531,8 +523,8 @@ public class RenderContext extends Thread {
 				drawQuad(x, y, x+384, y+384);
 			} else {
 				glBegin(GL_QUADS); {
-					glVertex2f(0, conf.isFull() ? 0 : CANVAS_HEIGHT-CANVAS_WIDTH);
-					glVertex2f(CANVAS_WIDTH, conf.isFull() ? 0 : CANVAS_HEIGHT-CANVAS_WIDTH);
+					glVertex2f(0, 0);
+					glVertex2f(CANVAS_WIDTH, 0);
 					glVertex2f(CANVAS_WIDTH, CANVAS_HEIGHT);
 					glVertex2f(0, CANVAS_HEIGHT);
 				} glEnd();
@@ -567,11 +559,11 @@ public class RenderContext extends Thread {
 			glDisable(GL_ALPHA_TEST);
 			glDisable(GL_CULL_FACE);
 			glEnable(GL_BLEND);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 			
 			glMatrixMode(GL_PROJECTION);
 			glLoadIdentity();
-			glOrtho(0, CANVAS_WIDTH, 0, CANVAS_HEIGHT, -10, 10);
+			glOrtho(0, CANVAS_WIDTH, CANVAS_HEIGHT, 0, -10, 10);
 			glViewport(0, 0, CANVAS_WIDTH, h);
 			
 			glMatrixMode(GL_MODELVIEW);
@@ -583,31 +575,14 @@ public class RenderContext extends Thread {
 				glBindTexture(GL_TEXTURE_2D, skinFboTex);
 				int x = (CANVAS_WIDTH-384)/2;
 				int y = (CANVAS_HEIGHT-384)/2;
-				drawQuad(x, y, x+384, y+384, 0, 1, 1, 0);
+				drawQuad(x, y, x+384, y+384, 0, 0, 1, 1);
 			} else {
-				if (fbo1Enabled) {
-					glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
-					glBindFramebuffer(GL_DRAW_FRAMEBUFFER, swapFbo);
-					glBlitFramebuffer(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, GL_COLOR_BUFFER_BIT, GL_LINEAR);
-					
-					glBindFramebuffer(GL_FRAMEBUFFER, 0);
-					glEnable(GL_BLEND);
-					glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-					glBindTexture(GL_TEXTURE_2D, swapFboTex);
-					drawQuad(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-				}
-				
-				if (fbo2Enabled) {
-					glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo2);
-					glBindFramebuffer(GL_DRAW_FRAMEBUFFER, swapFbo);
-					glBlitFramebuffer(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, GL_COLOR_BUFFER_BIT, GL_LINEAR);
-					
-					glBindFramebuffer(GL_FRAMEBUFFER, 0);
-					glEnable(GL_BLEND);
-					glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-					glBindTexture(GL_TEXTURE_2D, swapFboTex);
-					drawQuad(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-				}
+				glBindFramebuffer(GL_DRAW_FRAMEBUFFER, swapFbo);
+				glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+				glBlitFramebuffer(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+				glBindTexture(GL_TEXTURE_2D, swapFboTex);
+				drawQuad(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 			}
 		glPopMatrix();
 		
@@ -632,8 +607,6 @@ public class RenderContext extends Thread {
 					
 					drawText(fontBuf, true, "Full", 5, color(conf.isFull(), isKeyPressed(GLFW_KEY_F)));
 					drawText(fontBuf, true, "skiN only", 15, color(skinOnly, isKeyPressed(GLFW_KEY_N)));
-					drawText(fontBuf, true, "1  ", 25, color(fbo1Enabled, isKeyPressed(GLFW_KEY_1)));
-					drawText(fontBuf, true, "2", 25, color(fbo2Enabled, isKeyPressed(GLFW_KEY_2)));
 					
 					drawText(fontBuf, false, "DELETE to clear cache", (CANVAS_HEIGHT/2)-15, color(true, isKeyPressed(GLFW_KEY_DELETE)));
 				} else {
@@ -651,13 +624,11 @@ public class RenderContext extends Thread {
 	}
 
 	private int color(boolean lit, boolean colored) {
-		int a;
-		if (lit) {
-			a = 0xFF000000;
+		if (colored) {
+			return lit ? 0xFF00FFFF : 0x55005555;
 		} else {
-			a = 0x55000000;
+			return lit ? 0xFFFFFFFF : 0x55555555;
 		}
-		return (colored ? 0x00FFFF : 0xFFFFFF) | a;
 	}
 
 	private void drawText(ByteBuffer fontBuf, boolean alignRight, String text, int y, int color) {
@@ -680,7 +651,7 @@ public class RenderContext extends Thread {
 			glScalef(2, 2, 1);
 			glTranslatef(x, y, 1);
 			glEnable(GL_BLEND);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 			glEnable(GL_DEPTH_TEST);
 			glDepthFunc(GL_NOTEQUAL);
 			
@@ -804,20 +775,22 @@ public class RenderContext extends Thread {
 			Textures.upload(skin, GL_RGBA8, skinTexture);
 			if (Visage.trace) Visage.log.finest("Rendering");
 			
+			glUseProgram(0);
+			
 			glBindFramebuffer(GL_FRAMEBUFFER, skinFbo);
 			glClearColor(0, 0, 0, 0);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			
 			glMatrixMode(GL_PROJECTION);
 			glLoadIdentity();
-			glViewport(0, 0, 64*SKIN_SUPERSAMPLING, 64*SKIN_SUPERSAMPLING);
+			glViewport(0, 0, 64, 64);
 			glOrtho(0, 64, 0, 64, -1, 1);
 			
 			glMatrixMode(GL_MODELVIEW);
 			glLoadIdentity();
 			
 			glEnable(GL_BLEND);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 			
 			glEnable(GL_TEXTURE_2D);
 			
@@ -844,45 +817,36 @@ public class RenderContext extends Thread {
 			
 			glClearColor(0, 0, 0, 0);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			renderPass = 1;
 			renderer.render(width, height);
 			
-			glBindFramebuffer(GL_FRAMEBUFFER, fbo2);
-			glClearColor(0, 0, 0, 0);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			
-			glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
-			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo2);
-			glBlitFramebuffer(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-			
-			glBindFramebuffer(GL_FRAMEBUFFER, fbo2);
-			
-			renderPass = 2;
-			renderer.render(width, height);
-			
-			
+			glUseProgram(0);
 			
 			if (!parent.config.getBoolean("continuous")) {
 				if (Visage.trace) Visage.log.finest("Rendered - reading pixels");
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
+				
+				glDisable(GL_LIGHTING);
+				glColor3f(1, 1, 1);
+				glDisable(GL_ALPHA_TEST);
+				glDisable(GL_CULL_FACE);
+				glEnable(GL_BLEND);
+				glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+				
+				glMatrixMode(GL_PROJECTION);
+				glLoadIdentity();
+				glOrtho(0, 1, 0, 1, -10, 10);
+				glViewport(0, 0, 1, 1);
+				
+				glMatrixMode(GL_MODELVIEW);
+				glLoadIdentity();
+				
+				glViewport(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+				glBindFramebuffer(GL_DRAW_FRAMEBUFFER, swapFbo);
 				glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
-				glBindFramebuffer(GL_DRAW_FRAMEBUFFER, swapFbo);
-				glBlitFramebuffer(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, GL_COLOR_BUFFER_BIT, GL_LINEAR);
-				
+				glBlitFramebuffer(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 				glBindFramebuffer(GL_FRAMEBUFFER, 0);
-				glEnable(GL_BLEND);
-				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 				glBindTexture(GL_TEXTURE_2D, swapFboTex);
-				drawQuad(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-			
-				glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo2);
-				glBindFramebuffer(GL_DRAW_FRAMEBUFFER, swapFbo);
-				glBlitFramebuffer(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, GL_COLOR_BUFFER_BIT, GL_LINEAR);
-				
-				glBindFramebuffer(GL_FRAMEBUFFER, 0);
-				glEnable(GL_BLEND);
-				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-				glBindTexture(GL_TEXTURE_2D, swapFboTex);
-				drawQuad(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+				drawQuad(0, 0, 1, 1);
 				
 				out = renderer.readPixels(width, height);
 			} else {

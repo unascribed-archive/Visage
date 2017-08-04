@@ -94,12 +94,6 @@ public abstract class Renderer {
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
 		glViewport(0, 0, (int)width, (int)height);
-		if (owner.parent.config.getBoolean("visible") && owner.parent.config.getBoolean("continuous")) {
-			glScalef(1, -1, 1);
-		} else {
-			glClearColor(0, 0, 0, 0);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		}
 		glEnable(GL_DEPTH_TEST);
 		
 		double fov = 45;
