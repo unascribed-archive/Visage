@@ -346,7 +346,7 @@ public class RenderContext extends Thread {
 			checkGLError();
 			
 			glShadeModel(GL_SMOOTH);
-			glCullFace(GL_BACK);
+			glCullFace(GL_FRONT);
 			checkGLError();
 			
 			glEnable(GL_DEPTH_TEST);
@@ -550,7 +550,7 @@ public class RenderContext extends Thread {
 		}
 		
 		glEnable(GL_DEPTH_TEST);
-		glEnable(GL_CULL_FACE);
+		glDisable(GL_CULL_FACE);
 		glColor3f(1, 1, 1);
 		
 		glPushMatrix();

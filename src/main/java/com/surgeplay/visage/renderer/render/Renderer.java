@@ -109,7 +109,7 @@ public abstract class Renderer {
 		glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
-		glEnable(GL_CULL_FACE);
+		glDisable(GL_CULL_FACE);
 	}
 	
 	public void finish() {
