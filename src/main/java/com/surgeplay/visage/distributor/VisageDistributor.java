@@ -49,6 +49,8 @@ import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 
 import com.github.steveice10.mc.auth.data.GameProfile;
+import com.github.steveice10.mc.auth.service.ProfileService;
+import com.github.steveice10.mc.auth.service.SessionService;
 import com.google.common.collect.Maps;
 import com.google.common.io.ByteStreams;
 import com.google.common.io.Closer;
@@ -155,6 +157,8 @@ public class VisageDistributor extends Thread implements VisageRunner {
 			if (config.hasPath("redis.password")) {
 				password = config.getString("redis.password");
 			}
+			ProfileService.SEARCH_URL = config.getString("mojang.profile-server");
+			SessionService.BASE_URL = config.getString("mojang.session-server");
 			pool = new JedisPool(jpc, redisHost, redisPort);
 			
 			

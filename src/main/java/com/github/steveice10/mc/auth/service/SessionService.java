@@ -52,10 +52,7 @@ import java.util.UUID;
  * Service used for session-related queries.
  */
 public class SessionService {
-    private static final String BASE_URL = "https://sessionserver.mojang.com/session/minecraft/";
-    private static final String JOIN_URL = BASE_URL + "join";
-    private static final String HAS_JOINED_URL = BASE_URL + "hasJoined";
-    private static final String PROFILE_URL = BASE_URL + "profile";
+	public static String BASE_URL = "https://sessionserver.mojang.com/session/minecraft";
 
     private static final PublicKey SIGNATURE_KEY;
     private static final Gson GSON;
@@ -123,7 +120,7 @@ public class SessionService {
      */
     public void joinServer(GameProfile profile, String authenticationToken, String serverId) throws RequestException {
         JoinServerRequest request = new JoinServerRequest(authenticationToken, profile.getId(), serverId);
-        HTTP.makeRequest(this.proxy, JOIN_URL, request, null);
+        HTTP.makeRequest(this.proxy, BASE_URL+"/join", request, null);
     }
 
     /**
@@ -135,7 +132,7 @@ public class SessionService {
      * @throws RequestException If an error occurs while making the request.
      */
     public GameProfile getProfileByServer(String name, String serverId) throws RequestException {
-        HasJoinedResponse response = HTTP.makeRequest(this.proxy, HAS_JOINED_URL + "?username=" + name + "&serverId=" + serverId, null, HasJoinedResponse.class);
+        HasJoinedResponse response = HTTP.makeRequest(this.proxy, BASE_URL+"/hasJoined" + "?username=" + name + "&serverId=" + serverId, null, HasJoinedResponse.class);
         if(response != null && response.id != null) {
             GameProfile result = new GameProfile(response.id, name);
             if(response.properties != null) {
@@ -161,7 +158,7 @@ public class SessionService {
         }
 
         try {
-            MinecraftProfileResponse response = HTTP.makeRequest(this.proxy, PROFILE_URL + "/" + UUIDSerializer.fromUUID(profile.getId()) + "?unsigned=false", null, MinecraftProfileResponse.class);
+            MinecraftProfileResponse response = HTTP.makeRequest(this.proxy, BASE_URL+"/profile" + "/" + UUIDSerializer.fromUUID(profile.getId()) + "?unsigned=false", null, MinecraftProfileResponse.class);
             if(response == null) {
                 throw new ProfileNotFoundException("Couldn't fetch profile properties for " + profile + " as the profile does not exist.");
             }

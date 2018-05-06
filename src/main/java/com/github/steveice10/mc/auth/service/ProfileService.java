@@ -38,8 +38,7 @@ import java.util.UUID;
  * Repository for looking up profiles by name.
  */
 public class ProfileService {
-    private static final String BASE_URL = "https://api.mojang.com/profiles/";
-    private static final String SEARCH_URL = BASE_URL + "minecraft";
+    public static String URL = "https://api.mojang.com/profiles/minecraft";
 
     private static final int MAX_FAIL_COUNT = 3;
     private static final int DELAY_BETWEEN_PAGES = 100;
