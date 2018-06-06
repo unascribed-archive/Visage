@@ -102,7 +102,7 @@ public class ProfileService {
                     while(failCount < MAX_FAIL_COUNT && tryAgain) {
                         tryAgain = false;
                         try {
-                            GameProfile[] profiles = HTTP.makeRequest(proxy, SEARCH_URL, request, GameProfile[].class);
+                            GameProfile[] profiles = HTTP.makeRequest(proxy, URL, request, GameProfile[].class);
                             failCount = 0;
                             Set<String> missing = new HashSet<String>(request);
                             for(GameProfile profile : profiles) {
