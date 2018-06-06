@@ -118,7 +118,7 @@ public class VisageDistributor extends Thread implements VisageRunner {
 			}
 			Visage.log.info("Setting up Jetty");
 			Server server = new Server(new InetSocketAddress(config.getString("http.bind"), config.getInt("http.port")));
-			
+
 			List<String> expose = config.getStringList("expose");
 			String poweredBy;
 			if (expose.contains("server")) {
@@ -130,13 +130,13 @@ public class VisageDistributor extends Thread implements VisageRunner {
 			} else {
 				poweredBy = null;
 			}
-			
+
 			ResourceHandler resource = new ResourceHandler();
 			resource.setResourceBase(config.getString("http.static"));
 			resource.setDirectoriesListed(false);
 			resource.setWelcomeFiles(new String[] {"index.html"});
 			resource.setHandler(new VisageHandler(this));
-	
+
 			if (!"/dev/null".equals(config.getString("log"))) {
 				new File(config.getString("log")).getParentFile().mkdirs();
 				server.setRequestLog(new AsyncNCSARequestLog(config.getString("log")));
@@ -144,7 +144,7 @@ public class VisageDistributor extends Thread implements VisageRunner {
 			GzipHandler gzip = new GzipHandler();
 			gzip.setHandler(new HeaderHandler("X-Powered-By", poweredBy, resource));
 			server.setHandler(gzip);
-			
+
 			String redisHost = config.getString("redis.host");
 			int redisPort = config.getInt("redis.port");
 			Visage.log.info("Connecting to Redis at "+redisHost+":"+redisPort);
@@ -157,11 +157,11 @@ public class VisageDistributor extends Thread implements VisageRunner {
 			if (config.hasPath("redis.password")) {
 				password = config.getString("redis.password");
 			}
-			ProfileService.SEARCH_URL = config.getString("mojang.profile-server");
+			ProfileService.URL = config.getString("mojang.profile-server");
 			SessionService.BASE_URL = config.getString("mojang.session-server");
 			pool = new JedisPool(jpc, redisHost, redisPort);
-			
-			
+
+
 			Visage.log.info("Connecting to RabbitMQ at "+config.getString("rabbitmq.host")+":"+config.getInt("rabbitmq.port"));
 			ConnectionFactory factory = new ConnectionFactory();
 			factory.setHost(config.getString("rabbitmq.host"));
@@ -172,23 +172,23 @@ public class VisageDistributor extends Thread implements VisageRunner {
 				factory.setPassword(config.getString("rabbitmq.password"));
 			}
 			String queue = config.getString("rabbitmq.queue");
-			
+
 			Closer closer = Closer.create();
 			steve = ByteStreams.toByteArray(closer.register(ClassLoader.getSystemResourceAsStream("steve.png")));
 			alex = ByteStreams.toByteArray(closer.register(ClassLoader.getSystemResourceAsStream("alex.png")));
 			closer.close();
-			
+
 			conn = factory.newConnection();
 			channel = conn.createChannel();
 			if (Visage.debug) Visage.log.finer("Setting up queue '"+queue+"'");
 			channel.queueDeclare(queue, false, false, true, null);
 			channel.basicQos(1);
-			
+
 			if (Visage.debug) Visage.log.finer("Setting up reply queue");
 			replyQueue = channel.queueDeclare().getQueue();
 			consumer = new QueueingConsumer(channel);
 			channel.basicConsume(replyQueue, consumer);
-			
+
 			if (config.getBoolean("renderer.enable")) {
 				Visage.log.info("Starting fallback renderer");
 				fallback = new VisageRenderer(config.getConfig("renderer").withValue("rabbitmq", config.getValue("rabbitmq")));
@@ -321,7 +321,7 @@ public class VisageDistributor extends Thread implements VisageRunner {
 			throw new RenderFailedException("Unexpected error", e);
 		}
 	}
-	
+
 	/**
 	 * <a href="http://stackoverflow.com/questions/3758606/how-to-convert-byte-size-into-human-readable-format-in-java">Source</a>
 	 * @author aioobe
