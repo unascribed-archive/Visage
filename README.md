@@ -53,9 +53,17 @@ Extract it wherever, `cd` to the directory, and run `java -jar Visage-<VERSION>-
 Renderer mode is the default. **Windows is unsupported. Use it at your own
 peril.**
 
-Please note that, for technical reasons, you *must* have a real GPU and X server.
-llvmpipe doesn't work, and neither does Xvfb or Xdummy.
+It's possible to run a Visage without a real GPU.
+However, it requires a recent build of Mesa, and may not work properly.
 
+You'll need to set the following environment variables:
+
+* `LIBGL_ALWAYS_SOFTWARE=true`
+* `GALLIUM_DRIVER=swr`
+* `SWR_MSAA_MAX_COUNT=16`
+
+This forces Mesa to use the Intel OpenSWR software renderer. Currently, this is the only Mesa renderer that has
+the MSAA support required by Visage. Mesa's other software renderers, like llvmpipe, will not work.
 ## For Developers
 Visage is open source, and as such, if you find problems, you can submit a PR
 to fix said problems. The code style is basically Sun conventions with tabs
