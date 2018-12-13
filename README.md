@@ -1,6 +1,7 @@
 # Visage
 
 ## Visage is no longer maintained, [I have stopped developing for Minecraft](https://sleeping.town/@unascribed/101231022141008320). Please let me know if you would like to take over the project.
+### I will continue to host the official service as long as it is practical for me, but I will no longer be making changes to the code.
 
 Visage is an open source 2D/3D Minecraft avatar rendering service. It's built on
 a job distribution system and hardware-accelerated OpenGL, making it extra-fast.
